@@ -5,9 +5,9 @@ export class Product {
     public price: string,
     public discount: string | null,
     public stock: number,
-    public createdAt: Date = new Date(),
-    public updatedAt: Date = new Date(),
-    public deletedAt: Date | null = null
+    public created_at: Date = new Date(),
+    public updated_at: Date = new Date(),
+    public deleted_at: Date | null = null
   ) {}
 
   static build(
@@ -21,10 +21,17 @@ export class Product {
   }
 
   markAsUpdated(): void {
-    this.updatedAt = new Date();
+    this.updated_at = new Date();
   }
 
   softDelete(): void {
-    this.deletedAt = new Date();
+    this.deleted_at = new Date();
   }
+
+  public updateFields(data: Partial<Product>): void {
+  if (data.name !== undefined) this.name = data.name;
+  if (data.price !== undefined) this.price = data.price;
+  if (data.stock !== undefined) this.stock = data.stock;
+  this.updated_at = new Date();
+}
 }
