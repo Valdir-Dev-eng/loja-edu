@@ -23,7 +23,7 @@ export class ProductModule {
     private db:DataAccessPort
     private productValidator: Validator<ProductInput>
     constructor(private di:DependencyInjection) {
-        const validator = this.di.getDependency<DTOBuilderAndValidator>(DTOBuilderAndValidator)
+        const validator = this.di.getDependency<DTOBuilderAndValidator>(DTOBuilderAndValidator)        
         this.productValidator = new ProductValidator(validator)
         this.db = this.di.getDependency(DataAccessPort)
         this.server = this.di.getDependency(ServerPort)

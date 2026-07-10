@@ -15,13 +15,12 @@ export class ProductRouter {
         this.boot();
     }
 
-    // No seu ProductRouter.ts
 private boot() {
-    this.registerRouterProductInput("post", "/", this.createProduct.bind(this));
-    this.server.addRouter("put", "/:id", this.updateProduct.bind(this));
-    this.server.addRouter("delete", "/:id", this.deleteProduct.bind(this));
-    this.server.addRouter("get", "/:id", this.getById.bind(this));
-    this.server.addRouter("get", "/", this.getAll.bind(this));
+    this.registerRouterProductInput("post", "/user/", this.createProduct.bind(this));
+    this.server.addRouter("put", "/user/:id", this.updateProduct.bind(this));
+    this.server.addRouter("delete", "/user/:id", this.deleteProduct.bind(this));
+    this.server.addRouter("get", "/user/:id", this.getById.bind(this));
+    this.server.addRouter("get", "/user/", this.getAll.bind(this));
 }
 
 private deleteProduct: middleWare = async (req, res) => {

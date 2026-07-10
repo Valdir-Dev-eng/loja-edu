@@ -7,7 +7,6 @@ import { ProductInput } from "../schema/ProductSchema";
 import { ServerExpressAdapter } from "../server/ServerExpressAdapter";
 import { ServerPort } from "../server/ServerPort";
 import { Validator } from "../validators/Validator";
-import { ProductValidator } from "../validators/ProductValidator";
 import { ProductModule } from "./ProductModule";
 import { UserInput } from "../../app/users/dto/UserInput";
 import { UserValidator } from "../validators/UserValidator";
@@ -22,15 +21,17 @@ export class AppModule {
     private db: DataAccessPort
     private config:ConfigEnv
     private configDb:ConfigDb
+    private validator:DTOBuilderAndValidator
     constructor() {
         this.config = new ConfigEnv()
         this.configDb = new ConfigDb(this.config)
         this.di = new DependencyInjection()
         this.server = new ServerExpressAdapter()
         this.db = new PostgresDataAccess(this.configDb)
+        this.validator = new ZodDTOBuilderAndValidator()
         this.di.addDependency(this.server,ServerPort)
         this.di.addDependency(this.db,DataAccessPort)
-        this.di.addDependency(ZodDTOBuilderAndValidator, DTOBuilderAndValidator)        
+        this.di.addDependency(this.validator, DTOBuilderAndValidator)        
         this.modules()
     }
     
