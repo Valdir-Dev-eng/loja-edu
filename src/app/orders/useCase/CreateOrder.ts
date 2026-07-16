@@ -3,6 +3,7 @@ import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
 import { OrderInput } from "../dto/OrderInput";
 import { Product } from "../../../domain/entites/Product";
 import { CreateId } from "../../../domain/interface/CreateId";
+import { OrderOutput } from "../dto/OrderOutput";
 
 export class CreateOrder {
     constructor(
@@ -10,7 +11,7 @@ export class CreateOrder {
         private productRepo: RepositoryPort<Product>,
         private createId:CreateId
     ) {}
-    async execute(orderInput: OrderInput): Promise<string> {
+    async execute(orderInput: OrderInput): Promise<OrderOutput> {
         const orderItems: { productId: string; quantity: number; priceAtPurchase: number }[] = [];
         let total = 0;
         for (const item of orderInput.items) {
@@ -44,6 +45,13 @@ export class CreateOrder {
             'PENDING'
         );
         await this.orderRepo.save(order);
-        return order.id;
+        return {
+        id: order.id,
+        userId: order.userId,
+        items: order.items,
+        total: order.total,
+        status: order.status,
+        createdAt: order.created_at,
+    }
     }
 }
