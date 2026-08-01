@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { STORE_CONTACT } from "../lib/storeContact";
 import styles from "./Footer.module.css";
 
 export function Footer() {
@@ -12,9 +13,8 @@ export function Footer() {
 
         <div>
           <h4 className={styles.heading}>Atendimento</h4>
-          <p className={styles.text}>Rua Sorocaba, 100 — Centro, Sorocaba/SP</p>
-          <p className={styles.text}>(15) 3232-0000</p>
-          <p className={styles.text}>contato@sorofarma.com.br</p>
+          <p className={styles.text}>{STORE_CONTACT.address}</p>
+          <p className={styles.text}>{STORE_CONTACT.whatsapp}</p>
         </div>
 
         <div>
