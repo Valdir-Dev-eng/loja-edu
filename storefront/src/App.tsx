@@ -25,9 +25,9 @@ export function App() {
   }, [navigate]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div>
       <Header />
-      <main style={{ flex: 1 }}>
+      <main>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/produtos" element={<Products />} />
