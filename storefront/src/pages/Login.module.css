@@ -1,0 +1,54 @@
+.page {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8) var(--space-5);
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.title {
+  font-size: 24px;
+}
+
+.subtitle {
+  margin-top: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.googleButton {
+  margin-top: var(--space-6);
+  width: 100%;
+  min-height: var(--touch-target-min);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-red);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.googleButton:hover:not(:disabled) {
+  background: var(--color-brand-red-dark);
+}
+
+.googleButton:disabled {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.error {
+  margin-top: var(--space-4);
+  font-size: 13px;
+  color: var(--color-brand-red);
+}

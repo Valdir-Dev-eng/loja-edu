@@ -1,0 +1,55 @@
+{
+  "name": "lojaedu",
+  "version": "1.0.0",
+  "description": "criação da loja do edu",
+  "homepage": "https://github.com/Valdir2373/loja-edu#readme",
+  "bugs": {
+    "url": "https://github.com/Valdir2373/loja-edu/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Valdir2373/loja-edu.git"
+  },
+  "license": "ISC",
+  "author": "valdir",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsup && npm run build --prefix storefront",
+    "start": "node dist/main.js",
+    "dev": "npx tsx src/main.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/sentry-js-integration": "^0.3.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/uuid": "^10.0.0",
+    "argon2": "^0.44.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "dotenv-expand": "^13.0.0",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3",
+    "postgres": "^3.4.9",
+    "redis": "^6.1.0",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2",
+    "uuid": "^14.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/multer": "^2.2.0",
+    "@types/nodemailer": "^8.0.1",
+    "@vitejs/plugin-react": "^6.0.5",
+    "tsc-alias": "^1.9.0",
+    "tsup": "^8.5.1",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
+  }
+}

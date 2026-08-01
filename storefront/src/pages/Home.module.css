@@ -1,0 +1,20 @@
+.section {
+  padding: var(--space-7) var(--space-5) 0;
+}
+
+.heading {
+  font-size: 22px;
+  margin-bottom: var(--space-4);
+}
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-4);
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
+}

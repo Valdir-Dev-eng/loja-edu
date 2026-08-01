@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farmácia Edu</title>
+<style>
+  :root {
+    --green-dark: #1b5e35;
+    --green: #2e8b4f;
+    --green-light: #e6f4ea;
+    --white: #ffffff;
+    --text: #1f2a24;
+    --error-bg: #fdecea;
+    --error-border: #d64545;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: var(--green-light);
+    color: var(--text);
+  }
+  header {
+    background: var(--green-dark);
+    color: var(--white);
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+  header h1 { margin: 0; font-size: 1.3rem; }
+  nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; }
+  button {
+    background: var(--green);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button:hover { background: var(--green-dark); }
+  main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+  .view { display: none; background: var(--white); border-radius: 10px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .view.active { display: block; }
+  .admin-nav, .admin-orders-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .admin-view { display: none; }
+  .admin-view.active { display: block; }
+  ul#vitrineList, ul#myOrdersList { list-style: none; padding: 0; }
+  ul#vitrineList li, ul#myOrdersList li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--green-light);
+  }
+  ul#vitrineList li span { flex: 1; }
+  ul#vitrineList li input { width: 4rem; }
+  form { display: flex; flex-direction: column; gap: 0.7rem; }
+  fieldset { border: 1px solid var(--green-light); border-radius: 8px; display: flex; flex-direction: column; gap: 0.7rem; }
+  input, textarea {
+    padding: 0.5rem;
+    border: 1px solid #c9d8cf;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+  th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--green-light); }
+  #checkoutResult { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--green-light); }
+  #checkoutQr { width: 220px; height: 220px; display: block; margin-bottom: 0.8rem; }
+  #checkoutCopyPaste { width: 100%; height: 4rem; }
+  #apiMessage {
+    max-width: 900px;
+    margin: 1rem auto 0;
+    padding: 0.8rem 1rem;
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    border-radius: 8px;
+    color: var(--error-border);
+  }
+  #apiMessage ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌿 Farmácia Edu</h1>
+  <nav>
+    <button data-view="vitrine">Vitrine</button>
+    <button data-view="onboarding">Onboarding</button>
+    <button data-view="myOrders">Meus Pedidos</button>
+    <button data-view="admin">Painel Admin</button>
+    <button id="loginButton">Entrar com Google</button>
+    <button id="logoutButton">Sair</button>
+    <button id="devPromoteButton">Virar admin (dev)</button>
+  </nav>
+</header>
+
+<div id="apiMessage" hidden></div>
+
+<main>
+  <section id="view-vitrine" class="view">
+    <h2>Produtos</h2>
+    <ul id="vitrineList"></ul>
+    <div id="checkoutResult" hidden>
+      <h3>Pagamento PIX</h3>
+      <img id="checkoutQr" alt="QR Code PIX">
+      <p>Copia e cola:</p>
+      <textarea id="checkoutCopyPaste" readonly></textarea>
+      <button type="button" id="copyPasteButton">Copiar código</button>
+      <p id="checkoutExpiry"></p>
+      <p id="checkoutStatus">Aguardando pagamento...</p>
+    </div>
+  </section>
+
+  <section id="view-onboarding" class="view">
+    <h2>Complete seu cadastro</h2>
+    <form id="onboardingForm">
+      <input name="fullName" placeholder="Nome completo" required>
+      <fieldset>
+        <legend>Endereço</legend>
+        <input name="recipientName" placeholder="Nome do destinatário" required>
+        <input name="zipCode" placeholder="CEP (somente números, 8 dígitos)" required>
+        <input name="street" placeholder="Rua" required>
+        <input name="number" placeholder="Número" required>
+        <input name="complement" placeholder="Complemento (opcional)">
+        <input name="neighborhood" placeholder="Bairro" required>
+        <input name="city" placeholder="Cidade" required>
+        <input name="state" placeholder="UF (2 letras maiúsculas)" maxlength="2" required>
+      </fieldset>
+      <button type="submit">Concluir onboarding</button>
+    </form>
+  </section>
+
+  <section id="view-myOrders" class="view">
+    <h2>Meus pedidos</h2>
+    <ul id="myOrdersList"></ul>
+  </section>
+
+  <section id="view-admin" class="view">
+    <h2>Painel Admin</h2>
+    <nav class="admin-nav">
+      <button data-admin-view="products">Produtos</button>
+      <button data-admin-view="users">Usuários</button>
+      <button data-admin-view="orders">Compras</button>
+    </nav>
+
+    <div id="admin-products" class="admin-view">
+      <form id="productForm">
+        <input name="name" placeholder="Nome do produto" required>
+        <input name="price" placeholder="Preço" required>
+        <input name="discount" placeholder="Desconto (opcional)">
+        <input name="stock" type="number" placeholder="Estoque" required>
+        <div>
+          <button type="submit">Salvar produto</button>
+          <button type="button" id="cancelEditButton" hidden>Cancelar edição</button>
+        </div>
+      </form>
+      <table>
+        <thead><tr><th>Nome</th><th>Preço</th><th>Estoque</th><th></th></tr></thead>
+        <tbody id="adminTableBody"></tbody>
+      </table>
+    </div>
+
+    <div id="admin-users" class="admin-view">
+      <table>
+        <thead><tr><th>E-mail</th><th>Username</th><th>Papel</th><th>Onboarding</th></tr></thead>
+        <tbody id="adminUsersTableBody"></tbody>
+      </table>
+    </div>
+
+    <div id="admin-orders" class="admin-view">
+      <nav class="admin-orders-tabs">
+        <button data-order-tab="paid">Compra feita ✔</button>
+        <button data-order-tab="pending">Pedidos Recentes ⏳</button>
+        <button data-order-tab="refunded">Pedidos Estornados ☠</button>
+      </nav>
+      <table>
+        <thead><tr><th>Comprador</th><th>Itens</th><th>Total</th><th>Status</th><th>Data</th></tr></thead>
+        <tbody id="adminOrdersTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+  const state = { editingProductId: null };
+  let currentOrderTab = "paid";
+  let pollingTimer = null;
+
+  function showView(name) {
+    document.querySelectorAll(".view").forEach((el) => el.classList.remove("active"));
+    document.getElementById(`view-${name}`).classList.add("active");
+  }
+
+  function showAdminView(name) {
+    document.querySelectorAll(".admin-view").forEach((el) => el.classList.remove("active"));
+    document.getElementById(`admin-${name}`).classList.add("active");
+  }
+
+  document.querySelectorAll("nav button[data-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showView(button.dataset.view);
+      if (button.dataset.view === "myOrders") loadMyOrders();
+      if (button.dataset.view === "admin") {
+        showAdminView("products");
+        loadAdminTable();
+      }
+    });
+  });
+
+  document.querySelectorAll(".admin-nav button[data-admin-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showAdminView(button.dataset.adminView);
+      if (button.dataset.adminView === "users") loadAdminUsers();
+      if (button.dataset.adminView === "orders") loadAdminOrders(currentOrderTab);
+    });
+  });
+
+  document.querySelectorAll(".admin-orders-tabs button[data-order-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentOrderTab = button.dataset.orderTab;
+      loadAdminOrders(currentOrderTab);
+    });
+  });
+
+  function showApiMessage(payload) {
+    const box = document.getElementById("apiMessage");
+    box.innerHTML = "";
+    if (!payload) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const title = document.createElement("p");
+    title.textContent = payload.error || "Ocorreu um erro.";
+    box.appendChild(title);
+    if (payload.details && typeof payload.details === "object") {
+      const list = document.createElement("ul");
+      Object.entries(payload.details).forEach(([field, messages]) => {
+        const item = document.createElement("li");
+        const text = Array.isArray(messages) ? messages.join(" ") : JSON.stringify(messages);
+        item.textContent = `${field}: ${text}`;
+        list.appendChild(item);
+      });
+      box.appendChild(list);
+    }
+  }
+
+  async function callApi(path, options) {
+    const response = await fetch(path, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...(options && options.headers) },
+    });
+    const body = await response.json().catch(() => null);
+    const success = response.ok || response.status === 302;
+    if (!success) {
+      showApiMessage(body || { error: `Erro ${response.status}` });
+      throw new Error((body && body.error) || `Erro ${response.status}`);
+    }
+    showApiMessage(null);
+    return body;
+  }
+
+  function renderVitrineProducts(products) {
+    const list = document.getElementById("vitrineList");
+    list.innerHTML = "";
+    (products || []).forEach((product) => {
+      const item = document.createElement("li");
+
+      const label = document.createElement("span");
+      label.textContent = `${product.name} — R$ ${product.price} (estoque: ${product.stock})`;
+
+      const quantityInput = document.createElement("input");
+      quantityInput.type = "number";
+      quantityInput.min = "1";
+      quantityInput.max = String(product.stock);
+      quantityInput.value = "1";
+
+      const buyButton = document.createElement("button");
+      buyButton.textContent = "Comprar";
+      buyButton.addEventListener("click", () => startCheckout(product.id, Number(quantityInput.value)));
+
+      item.appendChild(label);
+      item.appendChild(quantityInput);
+      item.appendChild(buyButton);
+      list.appendChild(item);
+    });
+  }
+
+  async function loadVitrine() {
+    const products = await callApi("/product/").catch(() => []);
+    renderVitrineProducts(products);
+  }
+
+  function stopPolling() {
+    if (pollingTimer) {
+      clearInterval(pollingTimer);
+      pollingTimer = null;
+    }
+  }
+
+  function showCheckoutResult(result) {
+    const box = document.getElementById("checkoutResult");
+    box.hidden = false;
+    document.getElementById("checkoutQr").src = `data:image/png;base64,${result.qrCodeBase64}`;
+    document.getElementById("checkoutCopyPaste").value = result.qrCode;
+    document.getElementById("checkoutExpiry").textContent =
+      `Expira em: ${new Date(result.expiresAt).toLocaleString()}`;
+    document.getElementById("checkoutStatus").textContent = "Aguardando pagamento...";
+  }
+
+  function pollPaymentStatus(orderId) {
+    pollingTimer = setInterval(async () => {
+      const status = await callApi(`/order/${orderId}/payment-status`).catch(() => null);
+      if (!status) return;
+      if (status.status === "PAID") {
+        document.getElementById("checkoutStatus").textContent = "Compra confirmada ✔";
+        stopPolling();
+        loadVitrine();
+      } else if (status.status !== "PENDING_PAYMENT") {
+        document.getElementById("checkoutStatus").textContent = `Pedido: ${status.status}`;
+        stopPolling();
+      }
+    }, 4000);
+  }
+
+  async function startCheckout(productId, quantity) {
+    stopPolling();
+    try {
+      const result = await callApi("/order/checkout", {
+        method: "POST",
+        body: JSON.stringify({ items: [{ productId, quantity }] }),
+      });
+      showCheckoutResult(result);
+      pollPaymentStatus(result.orderId);
+    } catch (error) {
+      /* erro já exibido em #apiMessage */
+    }
+  }
+
+  document.getElementById("copyPasteButton").addEventListener("click", () => {
+    const field = document.getElementById("checkoutCopyPaste");
+    field.select();
+    navigator.clipboard?.writeText(field.value);
+  });
+
+  async function loadMyOrders() {
+    const orders = await callApi("/order/my").catch(() => []);
+    const list = document.getElementById("myOrdersList");
+    list.innerHTML = "";
+    (orders || []).forEach((order) => {
+      const item = document.createElement("li");
+      item.textContent = `Pedido ${order.id} — ${order.totalDisplay} — ${order.status}`;
+      list.appendChild(item);
+    });
+  }
+
+  function startEditingProduct(product) {
+    state.editingProductId = product.id;
+    const form = document.getElementById("productForm");
+    form.name.value = product.name;
+    form.price.value = product.price;
+    form.discount.value = product.discount || "";
+    form.stock.value = product.stock;
+    document.getElementById("cancelEditButton").hidden = false;
+  }
+
+  function stopEditingProduct() {
+    state.editingProductId = null;
+    document.getElementById("productForm").reset();
+    document.getElementById("cancelEditButton").hidden = true;
+  }
+
+  document.getElementById("cancelEditButton").addEventListener("click", stopEditingProduct);
+
+  async function deleteProduct(id) {
+    if (!confirm("Excluir este produto?")) return;
+    await callApi(`/product/${id}`, { method: "DELETE" }).catch(() => null);
+    await loadAdminTable();
+    await loadVitrine();
+  }
+
+  async function loadAdminTable() {
+    const products = await callApi("/product/").catch(() => []);
+    const body = document.getElementById("adminTableBody");
+    body.innerHTML = "";
+    (products || []).forEach((product) => {
+      const row = document.createElement("tr");
+
+      const nameCell = document.createElement("td");
+      nameCell.textContent = product.name;
+
+      const priceCell = document.createElement("td");
+      priceCell.textContent = product.price;
+
+      const stockCell = document.createElement("td");
+      stockCell.textContent = product.stock;
+
+      const actionsCell = document.createElement("td");
+      const editButton = document.createElement("button");
+      editButton.textContent = "Editar";
+      editButton.addEventListener("click", () => startEditingProduct(product));
+      const deleteButton = document.createElement("button");
+      deleteButton.textContent = "Excluir";
+      deleteButton.addEventListener("click", () => deleteProduct(product.id));
+      actionsCell.appendChild(editButton);
+      actionsCell.appendChild(deleteButton);
+
+      row.appendChild(nameCell);
+      row.appendChild(priceCell);
+      row.appendChild(stockCell);
+      row.appendChild(actionsCell);
+      body.appendChild(row);
+    });
+  }
+
+  async function loadAdminUsers() {
+    const users = await callApi("/admin/users").catch(() => []);
+    const body = document.getElementById("adminUsersTableBody");
+    body.innerHTML = "";
+    (users || []).forEach((user) => {
+      const row = document.createElement("tr");
+      [user.email, user.username, user.role, user.onboardingCompleted ? "sim" : "não"].forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    });
+  }
+
+  async function loadAdminOrders(tab) {
+    const orders = await callApi(`/admin/orders?tab=${tab}`).catch(() => []);
+    const body = document.getElementById("adminOrdersTableBody");
+    body.innerHTML = "";
+    (orders || []).forEach((order) => {
+      const row = document.createElement("tr");
+      const itemsText = order.items.map((item) => `${item.quantity}x ${item.productName}`).join(", ");
+      const values = [
+        order.buyerEmail,
+        itemsText,
+        order.totalDisplay,
+        order.status,
+        new Date(order.createdAt).toLocaleString(),
+      ];
+      values.forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    });
+  }
+
+  document.getElementById("productForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const payload = {
+      name: form.name.value,
+      price: form.price.value,
+      discount: form.discount.value || null,
+      stock: Number(form.stock.value),
+    };
+    const isEditing = Boolean(state.editingProductId);
+    const path = isEditing ? `/product/${state.editingProductId}` : "/product/";
+    const method = isEditing ? "PUT" : "POST";
+    try {
+      await callApi(path, { method, body: JSON.stringify(payload) });
+      stopEditingProduct();
+      await loadAdminTable();
+      await loadVitrine();
+    } catch (error) {
+      /* erro já exibido em #apiMessage */
+    }
+  });
+
+  document.getElementById("onboardingForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const payload = {
+      fullName: form.fullName.value,
+      addresses: [
+        {
+          recipientName: form.recipientName.value,
+          zipCode: form.zipCode.value,
+          street: form.street.value,
+          number: form.number.value,
+          complement: form.complement.value || null,
+          neighborhood: form.neighborhood.value,
+          city: form.city.value,
+          state: form.state.value.toUpperCase(),
+        },
+      ],
+    };
+    try {
+      await callApi("/auth/onboarding", { method: "POST", body: JSON.stringify(payload) });
+      form.reset();
+      showView("vitrine");
+    } catch (error) {
+      /* erro já exibido em #apiMessage */
+    }
+  });
+
+  document.getElementById("loginButton").addEventListener("click", async () => {
+    try {
+      const result = await callApi("/auth/google");
+      window.location.href = result.url;
+    } catch (error) {
+      /* erro já exibido em #apiMessage */
+    }
+  });
+
+  document.getElementById("logoutButton").addEventListener("click", async () => {
+    try {
+      await callApi("/auth/logout", { method: "POST" });
+      showView("vitrine");
+    } catch (error) {
+      /* erro já exibido em #apiMessage */
+    }
+  });
+
+  document.getElementById("devPromoteButton").addEventListener("click", async () => {
+    const response = await fetch("/dev/promote-me");
+    if (response.status === 404) {
+      showApiMessage({ error: "Rota de desenvolvimento não existe neste ambiente." });
+      document.getElementById("devPromoteButton").hidden = true;
+      return;
+    }
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      showApiMessage(body);
+      return;
+    }
+    showApiMessage(null);
+    alert(`Agora você é: ${body.role}`);
+  });
+
+  const initialParams = new URLSearchParams(window.location.search);
+  showView(initialParams.get("onboardingPending") === "true" ? "onboarding" : "vitrine");
+  loadVitrine();
+</script>
+</body>
+</html>

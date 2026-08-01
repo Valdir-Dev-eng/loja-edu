@@ -1,0 +1,126 @@
+import { Address } from "../../../domain/entites/Address";
+import { Order, OrderItem } from "../../../domain/entites/Order";
+import { Product } from "../../../domain/entites/Product";
+import { User } from "../../../domain/entites/User";
+import { BusinessRuleError } from "../../../domain/errors/BusinessRuleError";
+import { NotFoundError } from "../../../domain/errors/NotFoundError";
+import { CreateId } from "../../../domain/interface/CreateId";
+import { Money } from "../../../domain/money/Money";
+import { PaymentGatewayPort } from "../../../domain/payment/PaymentGatewayPort";
+import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
+import { ShippingGatewayPort, ShippingQuoteRequestItem } from "../../../domain/shipping/ShippingGatewayPort";
+import { CheckoutOrderInput } from "../dto/CheckoutOrderInput";
+import { CheckoutOrderOutput } from "../dto/CheckoutOrderOutput";
+
+export class CheckoutOrder {
+    constructor(
+        private orderRepo: RepositoryPort<Order>,
+        private productRepo: RepositoryPort<Product>,
+        private addressRepo: RepositoryPort<Address>,
+        private userRepo: RepositoryPort<User>,
+        private paymentGateway: PaymentGatewayPort,
+        private shippingGateway: ShippingGatewayPort,
+        private createId: CreateId
+    ) {}
+
+    async execute(input: CheckoutOrderInput): Promise<CheckoutOrderOutput> {
+        const user = await this.userRepo.findById(input.userId);
+        if (!user) {
+            throw new NotFoundError("Usuário não encontrado.");
+        }
+        const address = await this.addressRepo.findById(input.addressId);
+        if (!address || address.userId !== user.id) {
+            throw new NotFoundError("Endereço não encontrado.");
+        }
+
+        const { items, quoteItems } = await this.buildItems(input.items);
+        const freightCents = await this.resolveFreight(address.zipCode, quoteItems, input.shippingServiceId);
+
+        const order = Order.build(this.createId, user.id, address.id, items, freightCents, input.shippingServiceId);
+        const grandTotalCents = order.totalCents + order.freightCents;
+
+        const payment = await this.paymentGateway.createPixPayment({
+            orderId: order.id,
+            totalCents: grandTotalCents,
+            payerEmail: user.email,
+            ...this.splitPayerName(user.fullName ?? user.username),
+        });
+        order.attachPayment(payment.externalPaymentId);
+        await this.orderRepo.save(order);
+        await this.decrementStock(items);
+
+        return {
+            orderId: order.id,
+            status: order.status,
+            totalCents: order.totalCents,
+            totalDisplay: Money.toDisplay(order.totalCents),
+            freightCents: order.freightCents,
+            freightDisplay: Money.toDisplay(order.freightCents),
+            grandTotalCents,
+            grandTotalDisplay: Money.toDisplay(grandTotalCents),
+            qrCode: payment.qrCode,
+            qrCodeBase64: payment.qrCodeBase64,
+            expiresAt: payment.expiresAt,
+        };
+    }
+
+    private async buildItems(
+        requested: CheckoutOrderInput["items"]
+    ): Promise<{ items: OrderItem[]; quoteItems: ShippingQuoteRequestItem[] }> {
+        const items: OrderItem[] = [];
+        const quoteItems: ShippingQuoteRequestItem[] = [];
+        for (const requestedItem of requested) {
+            const product = await this.productRepo.findById(requestedItem.productId);
+            if (!product) {
+                throw new NotFoundError(`Produto ${requestedItem.productId} não encontrado.`);
+            }
+            if (product.stock < requestedItem.quantity) {
+                throw new BusinessRuleError(`Estoque insuficiente para o produto: ${product.name}`);
+            }
+            items.push({
+                productId: product.id,
+                productName: product.name,
+                priceCents: product.priceCents,
+                quantity: requestedItem.quantity,
+            });
+            quoteItems.push({
+                weightKg: product.weight,
+                widthCm: product.width,
+                heightCm: product.height,
+                lengthCm: product.length,
+                insuranceValueCents: product.priceCents,
+                quantity: requestedItem.quantity,
+            });
+        }
+        return { items, quoteItems };
+    }
+
+    private async resolveFreight(
+        destinationPostalCode: string,
+        quoteItems: ShippingQuoteRequestItem[],
+        shippingServiceId: number
+    ): Promise<number> {
+        const options = await this.shippingGateway.quote({ destinationPostalCode, items: quoteItems });
+        const chosen = options.find((option) => option.serviceId === shippingServiceId);
+        if (!chosen) {
+            throw new BusinessRuleError("Opção de frete não está mais disponível. Cote novamente.");
+        }
+        return chosen.priceCents;
+    }
+
+    private async decrementStock(items: OrderItem[]): Promise<void> {
+        await Promise.all(
+            items.map(async (item) => {
+                const product = await this.productRepo.findById(item.productId);
+                if (product) {
+                    await this.productRepo.update(product.id, { stock: product.stock - item.quantity });
+                }
+            })
+        );
+    }
+
+    private splitPayerName(fullName: string): { payerFirstName: string; payerLastName: string } {
+        const [payerFirstName, ...rest] = fullName.trim().split(/\s+/);
+        return { payerFirstName, payerLastName: rest.length > 0 ? rest.join(" ") : payerFirstName };
+    }
+}

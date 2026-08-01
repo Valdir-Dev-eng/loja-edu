@@ -1,0 +1,142 @@
+.page {
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-8);
+  max-width: 560px;
+}
+
+.title {
+  font-size: 24px;
+  margin-bottom: var(--space-5);
+}
+
+.hint {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.list {
+  list-style: none;
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.address {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.address p {
+  margin: 2px 0;
+  color: var(--color-text-secondary);
+}
+
+.recipient {
+  margin-top: var(--space-2) !important;
+}
+
+.deleteButton {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--color-brand-red);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.addButton {
+  width: 100%;
+  min-height: var(--touch-target-min);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-brand-red);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.addButton:disabled {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+
+.form {
+  margin-top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.fieldGroup label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.fieldGroup input {
+  min-height: var(--touch-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.error {
+  font-size: 13px;
+  color: var(--color-brand-red);
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.cancelButton {
+  flex: 1;
+  min-height: var(--touch-target-min);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.submitButton {
+  flex: 2;
+  min-height: var(--touch-target-min);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-red);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.submitButton:disabled {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+}
