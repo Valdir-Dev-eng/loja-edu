@@ -64,7 +64,7 @@
 
 .name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -86,9 +86,14 @@
 }
 
 .price {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
-  color: var(--color-text);
+  color: var(--color-brand-red);
+}
+
+.stock {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
 .addButton {
