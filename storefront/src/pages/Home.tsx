@@ -1,10 +1,10 @@
 import { CategoryCard } from "../components/CategoryCard";
 import { HeroBanner } from "../components/HeroBanner";
-import { NewArrivalsBanner } from "../components/NewArrivalsBanner";
 import { PromoBanner } from "../components/PromoBanner";
 import { ProductCard } from "../components/ProductCard";
 import { TrustSection } from "../components/TrustSection";
 import { useCategories } from "../hooks/useCategories";
+import { useProductsWithImages } from "../hooks/useProductImages";
 import { useProducts } from "../hooks/useProducts";
 import styles from "./Home.module.css";
 
@@ -13,11 +13,12 @@ const CURATED_SECTION_LIMIT = 8;
 export function Home() {
   const { data: products } = useProducts();
   const { data: categories } = useCategories();
+  const productsWithImages = useProductsWithImages(products ?? []);
 
-  const discountedProducts = (products ?? []).filter(
+  const discountedProducts = productsWithImages.filter(
     (product) => product.discountCents !== null && product.discountCents > 0
   );
-  const recentProducts = (products ?? []).slice(-CURATED_SECTION_LIMIT).reverse();
+  const recentProducts = productsWithImages.slice(-CURATED_SECTION_LIMIT).reverse();
 
   return (
     <div>
@@ -25,7 +26,7 @@ export function Home() {
 
       {categories && categories.length > 0 && (
         <section className={`container ${styles.section}`}>
-          <h2 className={styles.heading}>Categorias</h2>
+          <h2 className={styles.heading}>Compre por categoria</h2>
           <div className={styles.categoryGrid}>
             {categories.map((category) => (
               <CategoryCard key={category.id} category={category} />
@@ -47,7 +48,7 @@ export function Home() {
 
       {recentProducts.length > 0 && (
         <section className={`container ${styles.section}`}>
-          <NewArrivalsBanner />
+          <h2 className={styles.heading}>Lançamentos</h2>
           <div className={styles.productGrid}>
             {recentProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
