@@ -19,7 +19,7 @@ if redis.call("EXISTS", blockedKey) == 1 then
     return {0, ttl}
 end
 
-if redis.call("EXISTS", lastKey) == 1 then
+if minIntervalMs > 0 and redis.call("EXISTS", lastKey) == 1 then
     local ttl = redis.call("PTTL", lastKey)
     return {0, ttl}
 end
@@ -34,7 +34,9 @@ end
 
 redis.call("ZADD", windowKey, now, now .. "-" .. math.random(1, 1000000000))
 redis.call("PEXPIRE", windowKey, windowMs)
-redis.call("SET", lastKey, "1", "PX", minIntervalMs)
+if minIntervalMs > 0 then
+    redis.call("SET", lastKey, "1", "PX", minIntervalMs)
+end
 
 return {1, 0}
 `;

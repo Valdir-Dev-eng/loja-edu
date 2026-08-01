@@ -12,7 +12,7 @@ describe("RedisRateLimiterAdapter — prova de concorrência real (Redis do proj
     it("deixa passar exatamente o limite configurado quando requisições verdadeiramente paralelas disputam a mesma chave", async () => {
         const config: RateLimitTierConfig = {
             tierId: "concurrency-proof",
-            minIntervalMs: 1,
+            minIntervalMs: 0,
             windowMs: 60_000,
             maxRequestsInWindow: 3,
             blockDurationMs: 60_000,
