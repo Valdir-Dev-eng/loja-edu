@@ -6,7 +6,7 @@ export function HeroBanner() {
   return (
     <section className={styles.banner}>
       <div className={`container ${styles.inner}`}>
-        <div className={styles.textBlock}>
+        <div className={styles.panel}>
           <h1 className={styles.headline}>Sorocaba merece esse cuidado</h1>
           <p className={styles.subtext}>
             Medicamentos, vitaminas e cuidado do dia a dia — a Sorofarma leva até você tudo que sua família precisa,
