@@ -2,7 +2,7 @@
   position: relative;
   overflow: hidden;
   background: var(--color-brand-red);
-  padding: var(--space-8) 0;
+  padding: var(--space-8) 0 calc(var(--space-8) + 40px);
 }
 
 .waveShape {
@@ -11,6 +11,10 @@
   width: 100%;
   height: 100%;
   z-index: 1;
+}
+
+.waveShapeMobile {
+  display: none;
 }
 
 .inner {
@@ -37,11 +41,14 @@
 }
 
 .cta {
+  position: absolute;
+  left: var(--space-5);
+  bottom: 6%;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   min-height: var(--touch-target-min);
   padding: 0 var(--space-6);
-  margin-top: var(--space-5);
   border-radius: var(--radius-md);
   background: var(--color-brand-red);
   color: #fff;
@@ -49,43 +56,48 @@
   font-size: 14px;
 }
 
-.cta:hover {
-  background: var(--color-brand-red-dark);
-}
-
 .iconBadge {
   position: absolute;
-  top: 32.5%;
-  right: 16.7%;
+  top: 28%;
+  right: 14%;
   z-index: 3;
-  width: 84px;
-  height: 84px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
   background: var(--color-brand-red-dark);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 5px #fff, var(--shadow-md);
+  box-shadow: var(--shadow-md);
+}
+
+.iconBadge svg {
+  width: 46px;
+  height: 46px;
 }
 
 @media (max-width: 720px) {
   .banner {
-    padding: var(--space-6) 0;
+    padding: var(--space-6) 0 calc(var(--space-7) + 56px);
   }
 
   .headline {
     font-size: 26px;
   }
 
-  .iconBadge {
-    width: 56px;
-    height: 56px;
-    top: 10%;
-    right: 6%;
+  .cta {
+    bottom: 5%;
   }
 
-  .iconBadge svg {
-    width: 20px;
-    height: 20px;
+  .iconBadge {
+    display: none;
+  }
+
+  .waveShapeDesktop {
+    display: none;
+  }
+
+  .waveShapeMobile {
+    display: block;
   }
 }
