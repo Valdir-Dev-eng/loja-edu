@@ -33,6 +33,14 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: `${API_ORIGIN}/:path*`,
       },
+      {
+        // O fluxo de login com Google (incluindo o callback, que o proprio
+        // Google navega o navegador ate) precisa ficar na mesma origem do
+        // Next pra o redirect final (res.redirect relativo, feito pelo
+        // Express) cair de volta aqui, nao no processo antigo do storefront.
+        source: "/auth/:path*",
+        destination: `${API_ORIGIN}/auth/:path*`,
+      },
     ];
   },
 };
