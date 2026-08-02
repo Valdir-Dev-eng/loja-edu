@@ -1,5 +1,5 @@
 .section {
-  padding: var(--space-7) var(--space-5);
+  padding: var(--space-7) 0;
 }
 
 .grid {

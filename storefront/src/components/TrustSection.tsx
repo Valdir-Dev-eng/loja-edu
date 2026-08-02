@@ -17,8 +17,8 @@ const POINTS = [
 
 export function TrustSection() {
   return (
-    <section className={`container ${styles.section}`}>
-      <div className={styles.grid}>
+    <section className={styles.section}>
+      <div className={`container ${styles.grid}`}>
         {POINTS.map((point) => (
           <div className={styles.card} key={point.title}>
             <h3 className={styles.title}>{point.title}</h3>

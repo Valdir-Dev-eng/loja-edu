@@ -25,34 +25,40 @@ export function Home() {
       <HeroBanner />
 
       {categories && categories.length > 0 && (
-        <section className={`container ${styles.section}`}>
-          <h2 className={styles.heading}>Compre por categoria</h2>
-          <div className={styles.categoryGrid}>
-            {categories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
+        <section className={styles.section}>
+          <div className="container">
+            <h2 className={styles.heading}>Compre por categoria</h2>
+            <div className={styles.categoryGrid}>
+              {categories.map((category) => (
+                <CategoryCard key={category.id} category={category} />
+              ))}
+            </div>
           </div>
         </section>
       )}
 
       {discountedProducts.length > 0 && (
-        <section className={`container ${styles.section}`}>
-          <PromoBanner promotions={discountedProducts} />
-          <div className={styles.productGrid}>
-            {discountedProducts.slice(0, CURATED_SECTION_LIMIT).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+        <section className={styles.section}>
+          <div className="container">
+            <PromoBanner promotions={discountedProducts} />
+            <div className={styles.productGrid}>
+              {discountedProducts.slice(0, CURATED_SECTION_LIMIT).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
         </section>
       )}
 
       {recentProducts.length > 0 && (
-        <section className={`container ${styles.section}`}>
-          <h2 className={styles.heading}>Lançamentos</h2>
-          <div className={styles.productGrid}>
-            {recentProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+        <section className={styles.section}>
+          <div className="container">
+            <h2 className={styles.heading}>Lançamentos</h2>
+            <div className={styles.productGrid}>
+              {recentProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
         </section>
       )}
