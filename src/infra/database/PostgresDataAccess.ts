@@ -2,15 +2,19 @@ import postgres from 'postgres';
 import { DataAccessPort } from '../../domain/database/DataAcess';
 import { ConfigDb } from '../config/ConfigDb';
 
+const POOL_MAX_CONNECTIONS = 10;
+
 export class PostgresDataAccess extends DataAccessPort {
-  private readonly connectionOptions: any;
+  private readonly sql: postgres.Sql;
   private readonly allowedFields = ['id', 'name', 'ean', 'price', 'stock', 'discount', 'deleted_at'];
-
-
 
   constructor() {
     super();
-    this.connectionOptions = ConfigDb.getDb()
+    this.sql = postgres(ConfigDb.getDb(), {
+      ssl: { rejectUnauthorized: false },
+      connect_timeout: 10,
+      max: POOL_MAX_CONNECTIONS,
+    });
   }
 
   async findBy<T extends object>(query: Partial<T>): Promise<T | null> {
@@ -18,26 +22,19 @@ export class PostgresDataAccess extends DataAccessPort {
     return result || null;
 }
 
-  
+
   private readonly retryableConnectionErrorCodes = ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'CONNECT_TIMEOUT'];
   private readonly maxConnectionAttempts = 3;
 
   private async executeQuery<T>(callback: (sql: postgres.Sql) => Promise<T>): Promise<T> {
     for (let attempt = 1; attempt <= this.maxConnectionAttempts; attempt++) {
-      const sql = postgres(this.connectionOptions, {
-        ssl: { rejectUnauthorized: false },
-        connect_timeout: 10,
-        max: 1
-      });
       try {
-        return await callback(sql);
+        return await callback(this.sql);
       } catch (error) {
         if (!this.isRetryableConnectionError(error) || attempt === this.maxConnectionAttempts) {
           throw error;
         }
         await this.wait(attempt * 300);
-      } finally {
-        await sql.end();
       }
     }
     throw new Error('Falha ao conectar ao banco de dados após múltiplas tentativas.');
