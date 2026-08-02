@@ -1,12 +1,23 @@
 import { Link } from "react-router-dom";
-import { WaveDivider } from "./WaveDivider";
 import styles from "./HeroBanner.module.css";
+
+const WAVE_SHAPE_PATH =
+  "M420,300 C480,170 570,40 700,30 C830,20 900,65 970,55 C1040,45 1100,75 1200,60 L1200,300 Z";
 
 export function HeroBanner() {
   return (
     <section className={styles.banner}>
+      <svg
+        className={styles.waveShape}
+        viewBox="0 0 1200 300"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d={WAVE_SHAPE_PATH} fill="var(--color-brand-red)" />
+      </svg>
+
       <div className={`container ${styles.inner}`}>
-        <div className={styles.panel}>
+        <div className={styles.textBlock}>
           <h1 className={styles.headline}>Sorocaba merece esse cuidado</h1>
           <p className={styles.subtext}>
             Medicamentos, vitaminas e cuidado do dia a dia — a Sorofarma leva até você tudo que sua família precisa,
@@ -17,8 +28,6 @@ export function HeroBanner() {
           </Link>
         </div>
       </div>
-
-      <WaveDivider position="bottom" className={styles.wave} />
 
       <div className={styles.iconBadge} aria-hidden="true">
         <svg viewBox="0 0 48 48" width="30" height="30" fill="none">

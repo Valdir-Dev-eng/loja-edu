@@ -1,8 +1,16 @@
 .banner {
   position: relative;
   overflow: hidden;
-  background: var(--color-brand-red);
-  padding: var(--space-8) 0 calc(var(--space-8) + 56px);
+  background: var(--color-background);
+  padding: var(--space-8) 0;
+}
+
+.waveShape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 
 .inner {
@@ -10,12 +18,8 @@
   z-index: 2;
 }
 
-.panel {
-  max-width: 560px;
-  padding: var(--space-6);
-  border-radius: var(--radius-lg);
-  background: var(--color-background);
-  box-shadow: var(--shadow-md);
+.textBlock {
+  max-width: 420px;
 }
 
 .headline {
@@ -29,7 +33,7 @@
   font-size: 15px;
   line-height: 1.6;
   color: var(--color-text-secondary);
-  max-width: 440px;
+  max-width: 400px;
 }
 
 .cta {
@@ -49,21 +53,10 @@
   background: var(--color-brand-red-dark);
 }
 
-.wave {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 120px;
-  color: var(--color-background);
-  z-index: 1;
-}
-
 .iconBadge {
   position: absolute;
-  top: 30%;
-  right: 8%;
+  top: 32%;
+  right: 12%;
   z-index: 3;
   width: 84px;
   height: 84px;
@@ -77,7 +70,7 @@
 
 @media (max-width: 720px) {
   .banner {
-    padding: var(--space-6) 0 calc(var(--space-7) + 40px);
+    padding: var(--space-6) 0;
   }
 
   .headline {
@@ -87,16 +80,12 @@
   .iconBadge {
     width: 56px;
     height: 56px;
-    top: 12%;
+    top: 10%;
     right: 6%;
   }
 
   .iconBadge svg {
     width: 20px;
     height: 20px;
-  }
-
-  .wave {
-    height: 80px;
   }
 }
