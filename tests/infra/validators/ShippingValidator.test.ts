@@ -57,6 +57,26 @@ describe("ShippingValidator", () => {
                 })
             ).toThrow(ValidationError);
         });
+
+        it("aceita uma lista de itens com exatamente 50 produtos", () => {
+            const validator = new ShippingValidator();
+            const items = Array.from({ length: 50 }, (_, index) => ({
+                productId: "8f14e45f-ceea-467e-a4c7-8f5b3a6b1a3c",
+                quantity: index + 1,
+            }));
+
+            expect(() => validator.validateQuote({ ...validPayload, items })).not.toThrow();
+        });
+
+        it("recusa lista de itens com mais de 50 produtos, para não forçar milhares de buscas no banco por requisição", () => {
+            const validator = new ShippingValidator();
+            const items = Array.from({ length: 51 }, (_, index) => ({
+                productId: "8f14e45f-ceea-467e-a4c7-8f5b3a6b1a3c",
+                quantity: index + 1,
+            }));
+
+            expect(() => validator.validateQuote({ ...validPayload, items })).toThrow(ValidationError);
+        });
     });
 
     describe("formatError", () => {

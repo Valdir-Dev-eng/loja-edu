@@ -9,6 +9,7 @@ import {
 export class FakeShippingGatewayPort extends ShippingGatewayPort {
     public connected = true;
     public lastQuoteInput: ShippingQuoteInput | null = null;
+    public quoteCallCount = 0;
     public lastCartInput: InsertShippingInCartInput | null = null;
     public purchasedCartItemIds: string[] = [];
     public printedCartItemIds: string[] = [];
@@ -49,6 +50,7 @@ export class FakeShippingGatewayPort extends ShippingGatewayPort {
 
     async quote(input: ShippingQuoteInput): Promise<ShippingQuoteOption[]> {
         this.lastQuoteInput = input;
+        this.quoteCallCount += 1;
         return this.nextQuoteOptions;
     }
 

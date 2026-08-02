@@ -25,6 +25,8 @@ export class ShippingValidator {
                 requiredMessage: "A lista de itens é obrigatória.",
                 minItems: 1,
                 minItemsMessage: "É necessário informar ao menos um item.",
+                maxItems: 50,
+                maxItemsMessage: "A lista de itens pode ter no máximo 50 produtos.",
                 items: {
                     name: "item",
                     type: "object",

@@ -2,6 +2,7 @@ import { CalculateShipping } from "../../app/shipping/useCase/CalculateShipping"
 import { CompleteMelhorEnvioConnection } from "../../app/shipping/useCase/CompleteMelhorEnvioConnection";
 import { GetShippingLabelPrintLink } from "../../app/shipping/useCase/GetShippingLabelPrintLink";
 import { PurchaseShippingLabel } from "../../app/shipping/useCase/PurchaseShippingLabel";
+import { CachePort } from "../../domain/database/CachePort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { Address } from "../../domain/entites/Address";
 import { Order } from "../../domain/entites/Order";
@@ -29,13 +30,16 @@ export class ShippingModule {
         const db = this.di.getDependency<DataAccessPort>(DataAccessPort);
         const server = this.di.getDependency<ServerPort>(ServerPort);
         const shippingGateway = this.di.getDependency<ShippingGatewayPort>(ShippingGatewayPort);
+        const cache = this.di.getDependency<CachePort>(CachePort);
 
         const productRepository: RepositoryPort<Product> = new ProductRepository(db);
         const addressRepository: RepositoryPort<Address> = new AddressRepository(db);
         const userRepository: RepositoryPort<User> = new UserRepository(db);
         const orderRepository: RepositoryPort<Order> = new OrderRepository(db);
 
-        const shippingController = new ShippingController(new CalculateShipping(productRepository, shippingGateway));
+        const shippingController = new ShippingController(
+            new CalculateShipping(productRepository, shippingGateway, cache)
+        );
         new ShippingRouter(server, shippingController, new ShippingValidator());
 
         const melhorEnvioController = new MelhorEnvioController(new CompleteMelhorEnvioConnection(shippingGateway));
