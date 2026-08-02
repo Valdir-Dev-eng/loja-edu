@@ -1,8 +1,9 @@
 .banner {
+  --hero-text-offset-left: 32px;
   position: relative;
   overflow: hidden;
   background: var(--color-brand-red);
-  padding: var(--space-8) 0 calc(var(--space-8) + 40px);
+  padding: var(--space-8) 0 calc(var(--space-8) + 90px);
 }
 
 .waveShape {
@@ -24,6 +25,7 @@
 
 .textBlock {
   max-width: 420px;
+  margin-left: var(--hero-text-offset-left);
 }
 
 .headline {
@@ -58,11 +60,11 @@
 
 .iconBadge {
   position: absolute;
-  top: 28%;
+  top: 14%;
   right: 14%;
   z-index: 3;
-  width: 130px;
-  height: 130px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: var(--color-brand-red-dark);
   display: flex;
@@ -72,8 +74,8 @@
 }
 
 .iconBadge svg {
-  width: 46px;
-  height: 46px;
+  width: 36px;
+  height: 36px;
 }
 
 @media (max-width: 720px) {
