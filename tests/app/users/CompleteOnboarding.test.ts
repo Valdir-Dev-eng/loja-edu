@@ -166,6 +166,51 @@ describe("CompleteOnboarding", () => {
         ).rejects.toThrow(BusinessRuleError);
     });
 
+    it("recusa CPF/CNPJ que já pertence a outra conta", async () => {
+        const firstUser = User.build(context.createId, "joao@gmail.com", "joao");
+        firstUser.completeOnboarding("João da Silva", 1, "52998224725");
+        await context.userRepository.save(firstUser);
+        const secondUser = User.build(context.createId, "maria@gmail.com", "maria");
+        await context.userRepository.save(secondUser);
+
+        await expect(
+            context.useCase.execute({
+                userId: secondUser.id,
+                fullName: "Maria Souza",
+                document: "52998224725",
+                addresses: [validAddress],
+            })
+        ).rejects.toThrow(ConflictError);
+        await expect(
+            context.useCase.execute({
+                userId: secondUser.id,
+                fullName: "Maria Souza",
+                document: "529.982.247-25",
+                addresses: [validAddress],
+            })
+        ).rejects.toThrow("Este CPF/CNPJ já está cadastrado em outra conta.");
+
+        const persistedSecondUser = await context.userRepository.findById(secondUser.id);
+        expect(persistedSecondUser?.onboardingCompleted).toBe(false);
+    });
+
+    it("aceita o mesmo CPF formatado com pontuação diferente do já salvo, pois compara só os dígitos", async () => {
+        const firstUser = User.build(context.createId, "joao@gmail.com", "joao");
+        firstUser.completeOnboarding("João da Silva", 1, "52998224725");
+        await context.userRepository.save(firstUser);
+        const secondUser = User.build(context.createId, "maria@gmail.com", "maria");
+        await context.userRepository.save(secondUser);
+
+        await expect(
+            context.useCase.execute({
+                userId: secondUser.id,
+                fullName: "Maria Souza",
+                document: "111.444.777-35",
+                addresses: [validAddress],
+            })
+        ).resolves.toMatchObject({ document: "11144477735" });
+    });
+
     it("recusa concluir onboarding já concluído anteriormente", async () => {
         const user = User.build(context.createId, "joao@gmail.com", "joao");
         user.completeOnboarding("João da Silva", 1, "52998224725");

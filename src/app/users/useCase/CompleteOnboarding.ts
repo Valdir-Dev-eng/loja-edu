@@ -1,6 +1,7 @@
 import { CachePort } from "../../../domain/database/CachePort";
 import { Address } from "../../../domain/entites/Address";
 import { User } from "../../../domain/entites/User";
+import { ConflictError } from "../../../domain/errors/ConflictError";
 import { NotFoundError } from "../../../domain/errors/NotFoundError";
 import { CreateId } from "../../../domain/interface/CreateId";
 import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
@@ -20,6 +21,12 @@ export class CompleteOnboarding {
         const user = await this.userRepository.findById(input.userId);
         if (!user) {
             throw new NotFoundError("Usuário não encontrado.");
+        }
+
+        const normalizedDocument = input.document.replace(/\D/g, "");
+        const existingDocumentOwner = await this.userRepository.findBy({ document: normalizedDocument });
+        if (existingDocumentOwner && existingDocumentOwner.id !== user.id) {
+            throw new ConflictError("Este CPF/CNPJ já está cadastrado em outra conta.");
         }
 
         const addresses = input.addresses.map((address) =>
