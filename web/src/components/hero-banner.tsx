@@ -6,7 +6,7 @@ const WAVE_PATH =
 
 export function HeroBanner() {
   return (
-    <section className="relative overflow-hidden pt-12 pb-28 sm:pt-16 sm:pb-40">
+    <section className="relative overflow-hidden pt-10 pb-14 sm:pt-14 sm:pb-20">
       {/* onda vermelha decorativa, sobe do rodape do banner */}
       <svg
         className="absolute inset-x-0 bottom-0 z-0 h-[55%] w-full sm:h-[65%]"
@@ -22,6 +22,13 @@ export function HeroBanner() {
         </defs>
         <path d={WAVE_PATH} fill="url(#hero-wave-gradient)" />
       </svg>
+
+      {/* funde o vermelho da wave com o branco/creme da secao seguinte,
+          em vez de cortar seco na borda de baixo */}
+      <div
+        className="absolute inset-x-0 bottom-0 z-[5] h-10 bg-gradient-to-b from-transparent to-background sm:h-14"
+        aria-hidden="true"
+      />
 
       <div className="relative z-10 mx-auto max-w-(--content-max-width) px-4 sm:px-6">
         <div className="max-w-md">
