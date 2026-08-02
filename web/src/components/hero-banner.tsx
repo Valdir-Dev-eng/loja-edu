@@ -14,7 +14,13 @@ export function HeroBanner() {
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        <path d={WAVE_PATH} fill="var(--brand-red)" />
+        <defs>
+          <linearGradient id="hero-wave-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--brand-red)" />
+            <stop offset="100%" stopColor="var(--brand-red-dark)" />
+          </linearGradient>
+        </defs>
+        <path d={WAVE_PATH} fill="url(#hero-wave-gradient)" />
       </svg>
 
       <div className="relative z-10 mx-auto max-w-(--content-max-width) px-4 sm:px-6">
@@ -39,7 +45,7 @@ export function HeroBanner() {
 
       <Link
         href="/produtos"
-        className="absolute bottom-[10%] left-4 z-20 inline-flex h-11 items-center rounded-md bg-white px-6 text-sm font-bold text-brand-red shadow-md transition-colors hover:bg-brand-red-light sm:left-[max(1rem,calc((100%-1800px)/2+1rem))]"
+        className="absolute bottom-[10%] left-4 z-20 inline-flex h-11 items-center rounded-md bg-brand-red px-6 text-sm font-bold text-white shadow-lg transition-colors hover:bg-brand-red-dark sm:left-[max(1rem,calc((100%-1800px)/2+1rem))]"
       >
         Ver produtos
       </Link>
