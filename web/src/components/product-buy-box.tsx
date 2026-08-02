@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Ruler, ShoppingCart, Truck } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Truck } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useNotifications } from "@/hooks/use-notifications";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -10,8 +10,6 @@ import { discountPercentage, finalPriceCents, formatCentsToBRL } from "@/lib/mon
 import type { ProductOutput, ShippingOption } from "@/lib/api-types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ProductBuyBoxProps {
   product: ProductOutput;
@@ -99,8 +97,7 @@ export function ProductBuyBox({ product, activeImageUrl }: ProductBuyBoxProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="shadow-sm">
-        <CardContent>
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center gap-3">
           {percentage > 0 && (
             <>
@@ -169,82 +166,53 @@ export function ProductBuyBox({ product, activeImageUrl }: ProductBuyBoxProps) {
             {added ? "Adicionado ✓" : "Adicionar ao carrinho"}
           </Button>
         </div>
-        </CardContent>
-      </Card>
+      </div>
 
-      <Card className="bg-secondary shadow-none">
-        <CardContent>
-        <Tabs defaultValue="frete">
-          <TabsList className="w-full">
-            <TabsTrigger value="frete">
-              <Truck className="size-4" />
-              Frete
-            </TabsTrigger>
-            <TabsTrigger value="detalhes">
-              <Ruler className="size-4" />
-              Detalhes
-            </TabsTrigger>
-          </TabsList>
+      <div className="rounded-xl border border-border bg-secondary p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
+          <Truck className="size-[18px] text-brand-red" />
+          Calcular frete e prazo
+        </h2>
+        <form onSubmit={handleCalculateShipping} className="flex gap-2">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="00000-000"
+            value={postalCode}
+            onChange={(event) => setPostalCode(event.target.value)}
+            maxLength={9}
+            aria-label="CEP de entrega"
+            className="h-11 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-brand-red"
+          />
+          <Button type="submit" disabled={shippingLoading} variant="secondary" className="bg-foreground text-background hover:bg-foreground/90">
+            {shippingLoading ? "Calculando..." : "Calcular"}
+          </Button>
+        </form>
 
-          <TabsContent value="frete" className="mt-4">
-            <form onSubmit={handleCalculateShipping} className="flex gap-2">
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="00000-000"
-                value={postalCode}
-                onChange={(event) => setPostalCode(event.target.value)}
-                maxLength={9}
-                aria-label="CEP de entrega"
-                className="h-11 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-brand-red"
-              />
-              <Button type="submit" disabled={shippingLoading} variant="secondary" className="bg-foreground text-background hover:bg-foreground/90">
-                {shippingLoading ? "Calculando..." : "Calcular"}
-              </Button>
-            </form>
+        {shippingError && <p className="mt-3 text-sm text-destructive">{shippingError}</p>}
 
-            {shippingError && <p className="mt-3 text-sm text-destructive">{shippingError}</p>}
-
-            {shippingOptions && shippingOptions.length > 0 && (
-              <ul className="mt-4 flex flex-col gap-2">
-                {shippingOptions.map((option) => (
-                  <li
-                    key={option.serviceId}
-                    className="flex items-center justify-between rounded-md border border-border bg-background p-3 text-sm"
-                  >
-                    <div>
-                      <strong>{option.carrierName}</strong>
-                      <span className="text-muted-foreground"> — até {option.deliveryTimeDays} dia(s) úteis</span>
-                    </div>
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span>{option.priceDisplay}</span>
-                      <span className="text-xs text-muted-foreground">
-                        Total: {formatCentsToBRL(finalPrice * quantity + option.priceCents)}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </TabsContent>
-
-          <TabsContent value="detalhes" className="mt-4">
-            <dl className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-md border border-border bg-background p-3">
-                <dt className="text-xs text-muted-foreground">Peso</dt>
-                <dd className="font-semibold">{product.weight} kg</dd>
-              </div>
-              <div className="rounded-md border border-border bg-background p-3">
-                <dt className="text-xs text-muted-foreground">Dimensões (L×A×C)</dt>
-                <dd className="font-semibold">
-                  {product.width}×{product.height}×{product.length} cm
-                </dd>
-              </div>
-            </dl>
-          </TabsContent>
-        </Tabs>
-        </CardContent>
-      </Card>
+        {shippingOptions && shippingOptions.length > 0 && (
+          <ul className="mt-4 flex flex-col gap-2">
+            {shippingOptions.map((option) => (
+              <li
+                key={option.serviceId}
+                className="flex items-center justify-between rounded-md border border-border bg-background p-3 text-sm"
+              >
+                <div>
+                  <strong>{option.carrierName}</strong>
+                  <span className="text-muted-foreground"> — até {option.deliveryTimeDays} dia(s) úteis</span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span>{option.priceDisplay}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Total: {formatCentsToBRL(finalPrice * quantity + option.priceCents)}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

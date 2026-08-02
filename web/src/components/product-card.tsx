@@ -10,9 +10,6 @@ import { discountPercentage, finalPriceCents, formatCentsToBRL } from "@/lib/mon
 import type { ProductOutput } from "@/lib/api-types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -52,7 +49,7 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
   }
 
   return (
-    <Card className="group overflow-hidden py-0 transition-shadow hover:shadow-lg">
+    <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-lg">
       <Link href={`/produto/${product.id}`} className="block">
         <div className="relative aspect-square overflow-hidden bg-secondary">
           {imageUrl ? (
@@ -76,7 +73,7 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
         </div>
       </Link>
 
-      <CardContent className="flex flex-1 flex-col gap-2 pt-4">
+      <div className="flex flex-1 flex-col gap-2 p-4">
         <Link
           href={`/produto/${product.id}`}
           className="line-clamp-2 min-h-[2.6em] font-sans text-sm font-bold text-foreground"
@@ -95,28 +92,15 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
           </span>
         </div>
 
-        <Separator />
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className={cn("size-1.5 rounded-full", outOfStock ? "bg-border" : "bg-brand-success")} />
+          {outOfStock ? "Sem estoque" : `${product.stock} em estoque`}
+        </span>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="flex w-fit items-center gap-1.5 text-xs text-muted-foreground">
-              <span className={cn("size-1.5 rounded-full", outOfStock ? "bg-border" : "bg-brand-success")} />
-              {outOfStock ? "Sem estoque" : `${product.stock} em estoque`}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            {outOfStock
-              ? "Este produto está temporariamente indisponível."
-              : `Ainda restam ${product.stock} unidade(s) no nosso estoque.`}
-          </TooltipContent>
-        </Tooltip>
-      </CardContent>
-
-      <CardFooter>
         <Button
           onClick={handleAdd}
           disabled={outOfStock}
-          className="w-full"
+          className="mt-auto"
           variant={added ? "secondary" : "default"}
         >
           {outOfStock ? (
@@ -131,7 +115,7 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
             </>
           )}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </article>
   );
 }
