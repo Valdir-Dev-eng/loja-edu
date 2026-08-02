@@ -21,14 +21,17 @@ export class ListOrdersForAdmin {
             throw new BusinessRuleError("Aba de pedidos inválida.");
         }
 
-        const orders = await this.orderRepo.findAll();
-        const filtered = orders.filter((order) => statuses.includes(order.status));
+        const ordersByStatus = await Promise.all(statuses.map((status) => this.orderRepo.findMany({ status })));
+        const orders = ordersByStatus.flat();
 
-        return Promise.all(filtered.map((order) => this.toOutput(order)));
+        const buyerIds = [...new Set(orders.map((order) => order.userId))];
+        const buyers = await this.userRepo.findManyByIds(buyerIds);
+        const buyersById = new Map(buyers.map((buyer) => [buyer.id, buyer]));
+
+        return orders.map((order) => this.toOutput(order, buyersById.get(order.userId)));
     }
 
-    private async toOutput(order: Order): Promise<AdminOrderOutput> {
-        const buyer = await this.userRepo.findById(order.userId);
+    private toOutput(order: Order, buyer: User | undefined): AdminOrderOutput {
         return {
             id: order.id,
             status: order.status,

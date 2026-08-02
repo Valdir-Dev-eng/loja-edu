@@ -24,12 +24,12 @@ export class OrderRepository extends RepositoryPort<Order> {
 
     async findAll(): Promise<Order[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>(this.collectionName);
-        return Promise.all(rows.map((row) => this.hydrate(row)));
+        return this.hydrateMany(rows);
     }
 
     async findManyByIds(ids: string[]): Promise<Order[]> {
         const rows = await this.dataAccess.findManyByField<Record<string, unknown>>(this.collectionName, "id", ids);
-        return Promise.all(rows.map((row) => this.hydrate(row)));
+        return this.hydrateMany(rows);
     }
 
     async findMany(query: FilterQuery<Order>): Promise<Order[]> {
@@ -37,7 +37,7 @@ export class OrderRepository extends RepositoryPort<Order> {
             this.collectionName,
             this.toColumnQuery(query)
         );
-        return Promise.all(rows.map((row) => this.hydrate(row)));
+        return this.hydrateMany(rows);
     }
 
     async findBy(query: FilterQuery<Order>): Promise<Order | null> {
@@ -61,10 +61,28 @@ export class OrderRepository extends RepositoryPort<Order> {
     }
 
     private async hydrate(row: Record<string, unknown>): Promise<Order> {
-        const itemRows = await this.dataAccess.findMany<Record<string, unknown>>(this.itemsCollectionName, {
-            pedido_id: row.id,
-        } as never);
-        return this.mapToEntity(row, itemRows);
+        const [order] = await this.hydrateMany([row]);
+        return order;
+    }
+
+    private async hydrateMany(rows: Record<string, unknown>[]): Promise<Order[]> {
+        if (rows.length === 0) {
+            return [];
+        }
+        const orderIds = rows.map((row) => row.id as string);
+        const itemRows = await this.dataAccess.findManyByField<Record<string, unknown>>(
+            this.itemsCollectionName,
+            "pedido_id",
+            orderIds
+        );
+        const itemsByOrderId = new Map<string, Record<string, unknown>[]>();
+        for (const itemRow of itemRows) {
+            const orderId = itemRow.pedido_id as string;
+            const items = itemsByOrderId.get(orderId) ?? [];
+            items.push(itemRow);
+            itemsByOrderId.set(orderId, items);
+        }
+        return rows.map((row) => this.mapToEntity(row, itemsByOrderId.get(row.id as string) ?? []));
     }
 
     private async saveItem(orderId: string, item: OrderItem): Promise<void> {

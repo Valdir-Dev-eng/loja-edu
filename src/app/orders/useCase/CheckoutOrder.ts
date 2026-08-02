@@ -33,7 +33,8 @@ export class CheckoutOrder {
             throw new NotFoundError("Endereço não encontrado.");
         }
 
-        const { items, quoteItems } = await this.buildItems(input.items);
+        const productsById = await this.loadRequestedProducts(input.items);
+        const { items, quoteItems } = this.buildItems(input.items, productsById);
         const freightCents = await this.resolveFreight(address.zipCode, quoteItems, input.shippingServiceId);
 
         const order = Order.build(this.createId, user.id, address.id, items, freightCents, input.shippingServiceId);
@@ -47,7 +48,7 @@ export class CheckoutOrder {
         });
         order.attachPayment(payment.externalPaymentId);
         await this.orderRepo.save(order);
-        await this.decrementStock(items);
+        await this.decrementStock(items, productsById);
 
         return {
             orderId: order.id,
@@ -64,13 +65,20 @@ export class CheckoutOrder {
         };
     }
 
-    private async buildItems(
-        requested: CheckoutOrderInput["items"]
-    ): Promise<{ items: OrderItem[]; quoteItems: ShippingQuoteRequestItem[] }> {
+    private async loadRequestedProducts(requested: CheckoutOrderInput["items"]): Promise<Map<string, Product>> {
+        const productIds = requested.map((requestedItem) => requestedItem.productId);
+        const products = await this.productRepo.findManyByIds(productIds);
+        return new Map(products.map((product) => [product.id, product]));
+    }
+
+    private buildItems(
+        requested: CheckoutOrderInput["items"],
+        productsById: Map<string, Product>
+    ): { items: OrderItem[]; quoteItems: ShippingQuoteRequestItem[] } {
         const items: OrderItem[] = [];
         const quoteItems: ShippingQuoteRequestItem[] = [];
         for (const requestedItem of requested) {
-            const product = await this.productRepo.findById(requestedItem.productId);
+            const product = productsById.get(requestedItem.productId);
             if (!product) {
                 throw new NotFoundError(`Produto ${requestedItem.productId} não encontrado.`);
             }
@@ -108,10 +116,10 @@ export class CheckoutOrder {
         return chosen.priceCents;
     }
 
-    private async decrementStock(items: OrderItem[]): Promise<void> {
+    private async decrementStock(items: OrderItem[], productsById: Map<string, Product>): Promise<void> {
         await Promise.all(
             items.map(async (item) => {
-                const product = await this.productRepo.findById(item.productId);
+                const product = productsById.get(item.productId);
                 if (product) {
                     await this.productRepo.update(product.id, { stock: product.stock - item.quantity });
                 }
