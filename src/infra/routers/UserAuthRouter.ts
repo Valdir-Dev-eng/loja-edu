@@ -49,8 +49,13 @@ export class UserAuthRouter {
         });
     }
 
-    private buildRedirectUri(req: IRequest): string {
-        return `${req.protocol}://${req.headers.host}${GOOGLE_CALLBACK_PATH}`;
+    private buildRedirectUri(): string {
+        // Fixo via config (nao pelo Host da requisicao): o proxy do Next.js
+        // pro /auth/google faz uma chamada servidor-a-servidor direto no
+        // Express, entao req.headers.host reflete quem o Next chamou, nao
+        // o host que o navegador realmente esta usando. Confiar nisso fazia
+        // o redirect_uri variar dependendo de como a rota era alcancada.
+        return `${ConfigDomain.getDomain()}${GOOGLE_CALLBACK_PATH}`;
     }
 
     private resolveRequestedOrigin(req: IRequest): OAuthOrigin {
@@ -60,7 +65,7 @@ export class UserAuthRouter {
 
     private redirectToGoogle: middleWare = async (req, res) => {
         const state = createIdAdapter();
-        const redirectUri = this.buildRedirectUri(req);
+        const redirectUri = this.buildRedirectUri();
         const origin = this.resolveRequestedOrigin(req);
         res.cookie(OAUTH_STATE_COOKIE, state, {
             httpOnly: true,
@@ -96,8 +101,14 @@ export class UserAuthRouter {
             res.clearCookie(OAUTH_REDIRECT_URI_COOKIE);
             res.clearCookie(OAUTH_ORIGIN_COOKIE);
             this.setSessionCookie(res, result.token);
-            const routePrefix = origin === "loja" ? "/" : `${HARNESS_ROUTE_PREFIX}/`;
-            return res.redirect(`${routePrefix}?onboardingPending=${result.onboardingPending}`);
+            // "loja" e o novo frontend Next.js, que em dev vive numa origem
+            // separada do Express — precisa de URL absoluta, nao caminho
+            // relativo (senao o navegador fica na origem do Express).
+            const target =
+                origin === "loja"
+                    ? `${ConfigDomain.getLojaOrigin()}/?onboardingPending=${result.onboardingPending}`
+                    : `${HARNESS_ROUTE_PREFIX}/?onboardingPending=${result.onboardingPending}`;
+            return res.redirect(target);
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);
             return res.status(status).json(body);
