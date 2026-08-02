@@ -1,3 +1,4 @@
+import { CachePort } from "../../../domain/database/CachePort";
 import { Address } from "../../../domain/entites/Address";
 import { User } from "../../../domain/entites/User";
 import { NotFoundError } from "../../../domain/errors/NotFoundError";
@@ -5,11 +6,13 @@ import { CreateId } from "../../../domain/interface/CreateId";
 import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
 import { CompleteOnboardingInput } from "../dto/CompleteOnboardingInput";
 import { CompleteOnboardingOutput } from "../dto/CompleteOnboardingOutput";
+import { userByIdCacheKey } from "../UserCacheKeys";
 
 export class CompleteOnboarding {
     constructor(
         private userRepository: RepositoryPort<User>,
         private addressRepository: RepositoryPort<Address>,
+        private cache: CachePort,
         private createId: CreateId
     ) {}
 
@@ -43,6 +46,7 @@ export class CompleteOnboarding {
             onboardingCompleted: user.onboardingCompleted,
         });
         await Promise.all(addresses.map((address) => this.addressRepository.save(address)));
+        await this.cache.del(userByIdCacheKey(user.id));
 
         return {
             id: user.id,

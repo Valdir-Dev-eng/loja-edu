@@ -1,4 +1,5 @@
 import { PromoteUserToAdmin } from "../../app/users/useCase/PromoteUserToAdmin";
+import { CachePort } from "../../domain/database/CachePort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { User } from "../../domain/entites/User";
 import { RepositoryPort } from "../../domain/repository/RepositoryPort";
@@ -13,8 +14,9 @@ export class DevModule {
     constructor(private di: DependencyInjection, authRouter: UserAuthRouter) {
         const db = this.di.getDependency<DataAccessPort>(DataAccessPort);
         const server = this.di.getDependency<ServerPort>(ServerPort);
+        const cache = this.di.getDependency<CachePort>(CachePort);
         const userRepository: RepositoryPort<User> = new UserRepository(db);
-        const controller = new DevController(new PromoteUserToAdmin(userRepository));
+        const controller = new DevController(new PromoteUserToAdmin(userRepository, cache));
         new DevRouter(server, controller, authRouter);
     }
 }

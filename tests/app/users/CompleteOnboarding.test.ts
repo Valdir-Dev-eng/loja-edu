@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { CompleteOnboarding } from "../../../src/app/users/useCase/CompleteOnboarding";
 import { AddressInput } from "../../../src/app/users/dto/AddressInput";
+import { userByIdCacheKey } from "../../../src/app/users/UserCacheKeys";
 import { Address } from "../../../src/domain/entites/Address";
 import { User } from "../../../src/domain/entites/User";
 import { BusinessRuleError } from "../../../src/domain/errors/BusinessRuleError";
 import { ConflictError } from "../../../src/domain/errors/ConflictError";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
 import { InMemoryRepository } from "../../doubles/InMemoryRepository";
+import { FakeCachePort } from "../../doubles/FakeCachePort";
 
 const validAddress: AddressInput = {
     recipientName: "João da Silva",
@@ -23,10 +25,11 @@ const validAddress: AddressInput = {
 const buildUseCase = () => {
     const userRepository = new InMemoryRepository<User>();
     const addressRepository = new InMemoryRepository<Address>();
+    const cache = new FakeCachePort();
     let sequence = 0;
     const createId = () => `generated-id-${++sequence}`;
-    const useCase = new CompleteOnboarding(userRepository, addressRepository, createId);
-    return { useCase, userRepository, addressRepository, createId };
+    const useCase = new CompleteOnboarding(userRepository, addressRepository, cache, createId);
+    return { useCase, userRepository, addressRepository, cache, createId };
 };
 
 describe("CompleteOnboarding", () => {
@@ -176,5 +179,20 @@ describe("CompleteOnboarding", () => {
                 addresses: [validAddress],
             })
         ).rejects.toThrow(ConflictError);
+    });
+
+    it("invalida o cache do usuário ao concluir o onboarding", async () => {
+        const user = User.build(context.createId, "joao@gmail.com", "joao");
+        await context.userRepository.save(user);
+        await context.cache.set(userByIdCacheKey(user.id), JSON.stringify({ stale: true }), 60);
+
+        await context.useCase.execute({
+            userId: user.id,
+            fullName: "João da Silva",
+            document: "52998224725",
+            addresses: [validAddress],
+        });
+
+        expect(await context.cache.get(userByIdCacheKey(user.id))).toBeNull();
     });
 });

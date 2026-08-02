@@ -1,3 +1,4 @@
+import { CachePort } from "../../domain/database/CachePort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { Address } from "../../domain/entites/Address";
 import { User } from "../../domain/entites/User";
@@ -31,6 +32,7 @@ export class UserModule {
         const db = this.di.getDependency<DataAccessPort>(DataAccessPort);
         const server = this.di.getDependency<ServerPort>(ServerPort);
         const oauthProvider = this.di.getDependency<OAuthProviderPort>(OAuthProviderPort);
+        const cache = this.di.getDependency<CachePort>(CachePort);
 
         const userRepository: RepositoryPort<User> = new UserRepository(db);
         const addressRepository: RepositoryPort<Address> = new AddressRepository(db);
@@ -38,9 +40,9 @@ export class UserModule {
 
         const authController = new UserAuthController(
             new AuthenticateWithGoogle(oauthProvider, userRepository, createIdAdapter, serviceAuthToken),
-            new CompleteOnboarding(userRepository, addressRepository, createIdAdapter),
+            new CompleteOnboarding(userRepository, addressRepository, cache, createIdAdapter),
             new LogoutUser(serviceAuthToken),
-            new GetAuthenticatedUser(serviceAuthToken, userRepository)
+            new GetAuthenticatedUser(serviceAuthToken, userRepository, cache)
         );
 
         const addressController = new AddressController(

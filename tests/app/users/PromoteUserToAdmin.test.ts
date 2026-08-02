@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { PromoteUserToAdmin } from "../../../src/app/users/useCase/PromoteUserToAdmin";
+import { userByIdCacheKey } from "../../../src/app/users/UserCacheKeys";
 import { User, UserRole } from "../../../src/domain/entites/User";
 import { ConflictError } from "../../../src/domain/errors/ConflictError";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
 import { InMemoryRepository } from "../../doubles/InMemoryRepository";
+import { FakeCachePort } from "../../doubles/FakeCachePort";
 
 const buildUseCase = () => {
     const userRepository = new InMemoryRepository<User>();
-    const useCase = new PromoteUserToAdmin(userRepository);
-    return { useCase, userRepository };
+    const cache = new FakeCachePort();
+    const useCase = new PromoteUserToAdmin(userRepository, cache);
+    return { useCase, userRepository, cache };
 };
 
 const createId = () => "user-id-1";
@@ -45,5 +48,15 @@ describe("PromoteUserToAdmin", () => {
 
         await expect(context.useCase.execute({ userId: user.id })).rejects.toThrow(ConflictError);
         await expect(context.useCase.execute({ userId: user.id })).rejects.toThrow("Usuário já é administrador.");
+    });
+
+    it("invalida o cache do usuário ao promover a administrador", async () => {
+        const user = User.build(createId, "joao@gmail.com", "joao");
+        await context.userRepository.save(user);
+        await context.cache.set(userByIdCacheKey(user.id), JSON.stringify({ stale: true }), 60);
+
+        await context.useCase.execute({ userId: user.id });
+
+        expect(await context.cache.get(userByIdCacheKey(user.id))).toBeNull();
     });
 });
