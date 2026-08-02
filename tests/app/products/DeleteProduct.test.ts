@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DeleteProduct } from "../../../src/app/products/useCase/DeleteProduct";
-import { PRODUCTS_ALL_CACHE_KEY } from "../../../src/app/products/ProductCacheKeys";
+import { PRODUCTS_ALL_CACHE_KEY, productByIdCacheKey } from "../../../src/app/products/ProductCacheKeys";
 import { Product } from "../../../src/domain/entites/Product";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
 import { InMemoryRepository } from "../../doubles/InMemoryRepository";
@@ -45,5 +45,15 @@ describe("DeleteProduct", () => {
         await context.useCase.execute(product.id);
 
         expect(await context.cache.get(PRODUCTS_ALL_CACHE_KEY)).toBeNull();
+    });
+
+    it("invalida o cache do produto individual ao deletar", async () => {
+        const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
+        await context.repository.save(product);
+        await context.cache.set(productByIdCacheKey(product.id), JSON.stringify({ stale: true }), 300);
+
+        await context.useCase.execute(product.id);
+
+        expect(await context.cache.get(productByIdCacheKey(product.id))).toBeNull();
     });
 });

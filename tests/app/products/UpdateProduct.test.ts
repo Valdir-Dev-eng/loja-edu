@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { UpdateProduct } from "../../../src/app/products/useCase/UpdateProduct";
-import { PRODUCTS_ALL_CACHE_KEY } from "../../../src/app/products/ProductCacheKeys";
+import { PRODUCTS_ALL_CACHE_KEY, productByIdCacheKey } from "../../../src/app/products/ProductCacheKeys";
 import { Category } from "../../../src/domain/entites/Category";
 import { Product } from "../../../src/domain/entites/Product";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
@@ -113,5 +113,15 @@ describe("UpdateProduct", () => {
         await context.useCase.execute(product.id, { stock: 1 });
 
         expect(await context.cache.get(PRODUCTS_ALL_CACHE_KEY)).toBeNull();
+    });
+
+    it("invalida o cache do produto individual ao atualizar", async () => {
+        const product = buildProduct();
+        await context.repository.save(product);
+        await context.cache.set(productByIdCacheKey(product.id), JSON.stringify({ stale: true }), 300);
+
+        await context.useCase.execute(product.id, { stock: 1 });
+
+        expect(await context.cache.get(productByIdCacheKey(product.id))).toBeNull();
     });
 });

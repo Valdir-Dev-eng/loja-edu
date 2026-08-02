@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { UploadProductImage } from "../../../src/app/productImages/useCase/UploadProductImage";
+import { productImagesCacheKey } from "../../../src/app/productImages/ProductImageCacheKeys";
 import { Product } from "../../../src/domain/entites/Product";
 import { ProductImage } from "../../../src/domain/entites/ProductImage";
 import { BusinessRuleError } from "../../../src/domain/errors/BusinessRuleError";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
 import { InMemoryRepository } from "../../doubles/InMemoryRepository";
 import { FakeImageStorageGatewayPort } from "../../doubles/FakeImageStorageGatewayPort";
+import { FakeCachePort } from "../../doubles/FakeCachePort";
 
 let sequence = 0;
 const createId = () => `generated-id-${++sequence}`;
@@ -17,8 +19,9 @@ const buildUseCase = () => {
     const productRepo = new InMemoryRepository<Product>();
     const imageRepo = new InMemoryRepository<ProductImage>();
     const imageStorage = new FakeImageStorageGatewayPort();
-    const useCase = new UploadProductImage(productRepo, imageRepo, imageStorage, createId);
-    return { useCase, productRepo, imageRepo, imageStorage };
+    const cache = new FakeCachePort();
+    const useCase = new UploadProductImage(productRepo, imageRepo, imageStorage, cache, createId);
+    return { useCase, productRepo, imageRepo, imageStorage, cache };
 };
 
 const buildProduct = async (context: ReturnType<typeof buildUseCase>) => {
@@ -94,5 +97,14 @@ describe("UploadProductImage", () => {
             context.useCase.execute({ productId: product.id, bytes: PDF_BYTES, filename: "fake.jpg", altText: null })
         ).rejects.toThrow("Arquivo enviado não é uma imagem válida.");
         expect(context.imageStorage.uploadedFiles).toHaveLength(0);
+    });
+
+    it("invalida o cache de imagens do produto ao enviar uma nova imagem", async () => {
+        const product = await buildProduct(context);
+        await context.cache.set(productImagesCacheKey(product.id), JSON.stringify([{ stale: true }]), 300);
+
+        await context.useCase.execute({ productId: product.id, bytes: JPEG_BYTES, filename: "a.jpg", altText: null });
+
+        expect(await context.cache.get(productImagesCacheKey(product.id))).toBeNull();
     });
 });

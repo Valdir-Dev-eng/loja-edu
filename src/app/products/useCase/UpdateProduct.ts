@@ -5,7 +5,7 @@ import { Product } from "../../../domain/entites/Product";
 import { NotFoundError } from "../../../domain/errors/NotFoundError";
 import { ProductInput } from "../dto/ProductInput";
 import { ProductOutput } from "../dto/ProductOutput";
-import { PRODUCTS_ALL_CACHE_KEY } from "../ProductCacheKeys";
+import { PRODUCTS_ALL_CACHE_KEY, productByIdCacheKey } from "../ProductCacheKeys";
 
 export class UpdateProduct {
     constructor(
@@ -26,6 +26,7 @@ export class UpdateProduct {
         product.updateFields(input);
         await this.repo.update(id, product);
         await this.cache.del(PRODUCTS_ALL_CACHE_KEY);
+        await this.cache.del(productByIdCacheKey(id));
 
         return {
             id: product.id,

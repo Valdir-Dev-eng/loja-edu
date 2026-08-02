@@ -34,7 +34,7 @@ export class ProductModule {
         new CreateProduct(productRepository,categoryRepository,this.cache,createIdAdapter),
         new DeleteProduct(productRepository,this.cache),
         new UpdateProduct(productRepository,categoryRepository,this.cache),
-        new GetProductById(productRepository),
+        new GetProductById(productRepository,this.cache),
         new GetAllProducts(productRepository,this.cache),
 
         )

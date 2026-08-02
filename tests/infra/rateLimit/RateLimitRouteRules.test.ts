@@ -53,8 +53,8 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("DELETE", "/product/produto-123", ["generic-write"]);
         });
 
-        it("GET /product/:id -> authenticated-read (sem cache-aside ainda)", () => {
-            expectTierIds("GET", "/product/produto-123", ["authenticated-read"]);
+        it("GET /product/:id -> isenta (rota pública, cache-aside de verdade por trás)", () => {
+            expectTierIds("GET", "/product/produto-123", []);
         });
 
         it("GET /product/ -> isenta (lista com cache-aside de verdade por trás)", () => {
@@ -105,8 +105,8 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("DELETE", "/admin/products/produto-123/images/imagem-456", ["paid-external-call"]);
         });
 
-        it("GET /product/:id/images -> authenticated-read (sem cache-aside ainda)", () => {
-            expectTierIds("GET", "/product/produto-123/images", ["authenticated-read"]);
+        it("GET /product/:id/images -> isenta (rota pública, cache-aside de verdade por trás)", () => {
+            expectTierIds("GET", "/product/produto-123/images", []);
         });
 
         it("POST /shipping/quote -> paid-external-call (chama o Melhor Envio)", () => {

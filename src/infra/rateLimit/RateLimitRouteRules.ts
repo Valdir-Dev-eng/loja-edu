@@ -62,7 +62,7 @@ const ROUTE_RULES: RouteRateLimitRule[] = [
     { routeId: "product-create", method: "POST", pathPattern: "/product/", tiers: [GENERIC_WRITE] },
     { routeId: "product-update", method: "PUT", pathPattern: "/product/:id", tiers: [GENERIC_WRITE] },
     { routeId: "product-delete", method: "DELETE", pathPattern: "/product/:id", tiers: [GENERIC_WRITE] },
-    { routeId: "product-get-by-id", method: "GET", pathPattern: "/product/:id", tiers: [AUTHENTICATED_READ] },
+    { routeId: "product-get-by-id", method: "GET", pathPattern: "/product/:id", tiers: [] },
     { routeId: "product-list", method: "GET", pathPattern: "/product/", tiers: [] },
     { routeId: "order-checkout", method: "POST", pathPattern: "/order/checkout", tiers: [PAID_EXTERNAL_CALL] },
     { routeId: "order-my", method: "GET", pathPattern: "/order/my", tiers: [AUTHENTICATED_READ] },
@@ -90,7 +90,7 @@ const ROUTE_RULES: RouteRateLimitRule[] = [
         pathPattern: "/admin/products/:id/images/:imageId",
         tiers: [PAID_EXTERNAL_CALL],
     },
-    { routeId: "product-image-list", method: "GET", pathPattern: "/product/:id/images", tiers: [AUTHENTICATED_READ] },
+    { routeId: "product-image-list", method: "GET", pathPattern: "/product/:id/images", tiers: [] },
     { routeId: "shipping-quote", method: "POST", pathPattern: "/shipping/quote", tiers: [PAID_EXTERNAL_CALL] },
     {
         routeId: "melhor-envio-connect",

@@ -1,3 +1,4 @@
+import { CachePort } from "../../../domain/database/CachePort";
 import { Product } from "../../../domain/entites/Product";
 import { ProductImage } from "../../../domain/entites/ProductImage";
 import { BusinessRuleError } from "../../../domain/errors/BusinessRuleError";
@@ -8,6 +9,7 @@ import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
 import { ImageFileValidator } from "../../../infra/validators/ImageFileValidator";
 import { UploadProductImageInput } from "../dto/UploadProductImageInput";
 import { ProductImageOutput } from "../dto/ProductImageOutput";
+import { productImagesCacheKey } from "../ProductImageCacheKeys";
 
 const MAX_IMAGES_PER_PRODUCT = 6;
 
@@ -16,6 +18,7 @@ export class UploadProductImage {
         private productRepo: RepositoryPort<Product>,
         private imageRepo: RepositoryPort<ProductImage>,
         private imageStorage: ImageStorageGatewayPort,
+        private cache: CachePort,
         private createId: CreateId
     ) {}
 
@@ -44,6 +47,7 @@ export class UploadProductImage {
 
         const image = ProductImage.build(this.createId, product.id, uploaded.url, existingImages.length, input.altText);
         await this.imageRepo.save(image);
+        await this.cache.del(productImagesCacheKey(product.id));
 
         return {
             id: image.id,
