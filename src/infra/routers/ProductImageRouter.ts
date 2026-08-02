@@ -5,10 +5,11 @@ import { middleWare, ServerPort } from "../server/ServerPort";
 import { UserAuthRouter } from "./UserAuthRouter";
 
 const MAX_UPLOAD_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_FILES_PER_UPLOAD = 6;
 
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { files: 1, fileSize: MAX_UPLOAD_FILE_SIZE_BYTES },
+    limits: { files: MAX_FILES_PER_UPLOAD, fileSize: MAX_UPLOAD_FILE_SIZE_BYTES },
 });
 
 export class ProductImageRouter {
@@ -27,7 +28,7 @@ export class ProductImageRouter {
             this.authRouter.requireSession,
             this.authRouter.requireAdmin,
             this.parseUpload,
-            this.uploadImage
+            this.uploadImages
         );
         this.server.addRouter(
             "delete",
@@ -40,7 +41,7 @@ export class ProductImageRouter {
     }
 
     private parseUpload: middleWare = async (req, res, next) => {
-        upload.single("image")(req as any, res as any, (error: unknown) => {
+        upload.array("images", MAX_FILES_PER_UPLOAD)(req as any, res as any, (error: unknown) => {
             if (error) {
                 res.status(400).json({ error: this.describeMulterError(error) });
                 return;
@@ -54,25 +55,45 @@ export class ProductImageRouter {
             return "Arquivo excede o tamanho máximo permitido (5MB).";
         }
         if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_COUNT") {
-            return "Envie apenas um arquivo por vez.";
+            return `Envie no máximo ${MAX_FILES_PER_UPLOAD} imagens por vez.`;
         }
         return "Falha ao processar o arquivo enviado.";
     }
 
-    private uploadImage: middleWare = async (req, res) => {
+    private parseAltTexts(raw: unknown, fileCount: number): (string | null)[] {
+        if (typeof raw !== "string" || raw.trim().length === 0) {
+            return new Array(fileCount).fill(null);
+        }
         try {
-            const file = (req as unknown as { file?: Express.Multer.File }).file;
-            if (!file) {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                return new Array(fileCount).fill(null);
+            }
+            return new Array(fileCount).fill(null).map((_, index) => {
+                const value = parsed[index];
+                return typeof value === "string" && value.trim().length > 0 ? value : null;
+            });
+        } catch {
+            return new Array(fileCount).fill(null);
+        }
+    }
+
+    private uploadImages: middleWare = async (req, res) => {
+        try {
+            const files = (req as unknown as { files?: Express.Multer.File[] }).files ?? [];
+            if (files.length === 0) {
                 res.status(400).json({ error: "Nenhum arquivo enviado." });
                 return;
             }
             const { id } = req.params;
-            const altText = typeof req.body?.altText === "string" ? req.body.altText : null;
+            const altTexts = this.parseAltTexts(req.body?.altTexts, files.length);
             const result = await this.controller.upload({
                 productId: id,
-                bytes: file.buffer,
-                filename: file.originalname,
-                altText,
+                files: files.map((file, index) => ({
+                    bytes: file.buffer,
+                    filename: file.originalname,
+                    altText: altTexts[index],
+                })),
             });
             res.status(201).json(result);
         } catch (error) {

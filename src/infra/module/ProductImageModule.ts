@@ -1,6 +1,6 @@
 import { DeleteProductImage } from "../../app/productImages/useCase/DeleteProductImage";
 import { ListProductImages } from "../../app/productImages/useCase/ListProductImages";
-import { UploadProductImage } from "../../app/productImages/useCase/UploadProductImage";
+import { UploadProductImages } from "../../app/productImages/useCase/UploadProductImages";
 import { CachePort } from "../../domain/database/CachePort";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { Product } from "../../domain/entites/Product";
@@ -29,7 +29,7 @@ export class ProductImageModule {
         const imageRepository: RepositoryPort<ProductImage> = new ProductImageRepository(db);
 
         this.controller = new ProductImageController(
-            new UploadProductImage(productRepository, imageRepository, imageStorage, cache, createIdAdapter),
+            new UploadProductImages(productRepository, imageRepository, imageStorage, cache, createIdAdapter),
             new DeleteProductImage(imageRepository, imageStorage, cache),
             new ListProductImages(imageRepository, cache)
         );

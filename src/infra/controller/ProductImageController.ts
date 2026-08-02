@@ -1,18 +1,18 @@
 import { DeleteProductImageInput } from "../../app/productImages/dto/DeleteProductImageInput";
-import { UploadProductImageInput } from "../../app/productImages/dto/UploadProductImageInput";
+import { UploadProductImagesInput } from "../../app/productImages/dto/UploadProductImagesInput";
 import { DeleteProductImage } from "../../app/productImages/useCase/DeleteProductImage";
 import { ListProductImages } from "../../app/productImages/useCase/ListProductImages";
-import { UploadProductImage } from "../../app/productImages/useCase/UploadProductImage";
+import { UploadProductImages } from "../../app/productImages/useCase/UploadProductImages";
 
 export class ProductImageController {
     constructor(
-        private uploadProductImage: UploadProductImage,
+        private uploadProductImages: UploadProductImages,
         private deleteProductImage: DeleteProductImage,
         private listProductImages: ListProductImages
     ) {}
 
-    async upload(input: UploadProductImageInput) {
-        return await this.uploadProductImage.execute(input);
+    async upload(input: UploadProductImagesInput) {
+        return await this.uploadProductImages.execute(input);
     }
 
     async delete(input: DeleteProductImageInput) {
