@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Menu, Search, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -10,6 +9,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { CartBadge } from "@/components/cart-badge";
 
 const NAV_LINKS = [
   { href: "/produtos", label: "Todos os produtos" },
@@ -65,6 +65,7 @@ export function SiteHeader() {
             <Link href="/carrinho">
               <ShoppingCart className="size-4" />
               Carrinho
+              <CartBadge />
             </Link>
           </Button>
         </nav>
@@ -72,9 +73,10 @@ export function SiteHeader() {
         {/* Mobile: barra compacta + hambúrguer, composição própria (não é a
             navbar desktop encolhida) */}
         <div className="ml-auto flex items-center gap-1 lg:hidden">
-          <Button variant="ghost" size="icon" asChild aria-label="Carrinho">
+          <Button variant="ghost" size="icon" asChild aria-label="Carrinho" className="relative">
             <Link href="/carrinho">
               <ShoppingCart className="size-5" />
+              <CartBadge />
             </Link>
           </Button>
           <Sheet>
