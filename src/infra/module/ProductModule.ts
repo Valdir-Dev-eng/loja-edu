@@ -13,6 +13,7 @@ import { DeleteProduct } from "../../app/products/useCase/DeleteProduct";
 import { UpdateProduct } from "../../app/products/useCase/UpdateProduct";
 import { GetProductById } from "../../app/products/useCase/GetProductById";
 import { GetAllProducts } from "../../app/products/useCase/GetAllProducts";
+import { SingleFlight } from "../cache/SingleFlight";
 import { createIdAdapter } from "../utils/createId";
 import { ProductValidator } from "../validators/ProductValidator";
 import { DTOBuilderAndValidator } from "../shared/validators/DTOBuilderAndValidator";
@@ -35,7 +36,7 @@ export class ProductModule {
         new DeleteProduct(productRepository,this.cache),
         new UpdateProduct(productRepository,categoryRepository,this.cache),
         new GetProductById(productRepository,this.cache),
-        new GetAllProducts(productRepository,this.cache),
+        new GetAllProducts(productRepository,this.cache,new SingleFlight()),
 
         )
         new ProductRouter(this.server,controller,this.productValidator,this.authRouter)

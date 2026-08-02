@@ -2,16 +2,29 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { GetAllProducts } from "../../../src/app/products/useCase/GetAllProducts";
 import { PRODUCTS_ALL_CACHE_KEY, PRODUCTS_CACHE_TTL_SECONDS } from "../../../src/app/products/ProductCacheKeys";
 import { Product } from "../../../src/domain/entites/Product";
+import { SingleFlight } from "../../../src/infra/cache/SingleFlight";
 import { InMemoryRepository } from "../../doubles/InMemoryRepository";
 import { FakeCachePort } from "../../doubles/FakeCachePort";
 
 let sequence = 0;
 const createId = () => `product-id-${++sequence}`;
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+class CountingSlowRepository extends InMemoryRepository<Product> {
+    public findAllCallCount = 0;
+
+    async findAll(): Promise<Product[]> {
+        this.findAllCallCount++;
+        await wait(25);
+        return super.findAll();
+    }
+}
+
 const buildUseCase = () => {
     const repository = new InMemoryRepository<Product>();
     const cache = new FakeCachePort();
-    const useCase = new GetAllProducts(repository, cache);
+    const useCase = new GetAllProducts(repository, cache, new SingleFlight());
     return { useCase, repository, cache };
 };
 
@@ -122,6 +135,38 @@ describe("GetAllProducts", () => {
             const output = await context.useCase.execute();
 
             expect(output).toEqual(cachedOutput);
+        });
+
+        it("quando muitas chamadas concorrentes acham o cache vazio ao mesmo tempo (estouro de TTL sob tráfego), só uma delas consulta o repositório — as outras reaproveitam essa mesma busca em vez de martelar o banco", async () => {
+            const repository = new CountingSlowRepository();
+            const cache = new FakeCachePort();
+            const useCase = new GetAllProducts(repository, cache, new SingleFlight());
+            const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
+            await repository.save(product);
+
+            const [first, second, third] = await Promise.all([
+                useCase.execute(),
+                useCase.execute(),
+                useCase.execute(),
+            ]);
+
+            expect(repository.findAllCallCount).toBe(1);
+            expect(first).toEqual(second);
+            expect(second).toEqual(third);
+            expect(await cache.get(PRODUCTS_ALL_CACHE_KEY)).not.toBeNull();
+        });
+
+        it("depois que o cache é populado por uma rajada concorrente, uma chamada seguinte lê do cache sem disparar outra busca", async () => {
+            const repository = new CountingSlowRepository();
+            const cache = new FakeCachePort();
+            const useCase = new GetAllProducts(repository, cache, new SingleFlight());
+            const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
+            await repository.save(product);
+
+            await Promise.all([useCase.execute(), useCase.execute()]);
+            await useCase.execute();
+
+            expect(repository.findAllCallCount).toBe(1);
         });
     });
 });
