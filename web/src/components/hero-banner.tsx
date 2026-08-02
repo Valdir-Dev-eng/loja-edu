@@ -15,7 +15,9 @@ export function HeroBanner() {
         aria-hidden="true"
       >
         <defs>
-          <linearGradient id="hero-wave-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          {/* Horizontal (nao diagonal): assim a cor na borda esquerda, onde
+              o botao fica, e sempre --brand-red puro, igual ao botao. */}
+          <linearGradient id="hero-wave-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="var(--brand-red)" />
             <stop offset="100%" stopColor="var(--brand-red-dark)" />
           </linearGradient>
@@ -45,7 +47,7 @@ export function HeroBanner() {
 
       <Link
         href="/produtos"
-        className="absolute bottom-[10%] left-4 z-20 inline-flex h-11 items-center rounded-md bg-brand-red px-6 text-sm font-bold text-white shadow-lg transition-colors hover:bg-brand-red-dark sm:left-[max(1rem,calc((100%-1800px)/2+1rem))]"
+        className="absolute bottom-[10%] left-4 z-20 inline-flex h-11 items-center rounded-md bg-brand-red px-6 text-sm font-bold text-white sm:left-[max(1rem,calc((100%-1800px)/2+1rem))]"
       >
         Ver produtos
       </Link>
