@@ -1,9 +1,31 @@
+@keyframes heroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes badgeFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
 .banner {
   --hero-text-offset-left: 32px;
   position: relative;
   overflow: hidden;
   background: var(--color-brand-red);
   padding: var(--space-8) 0 calc(var(--space-8) + 90px);
+  animation: heroReveal 0.7s ease-out;
 }
 
 .waveShape {
@@ -71,11 +93,22 @@
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-md);
+  animation: badgeFloat 3s ease-in-out infinite;
 }
 
 .iconBadge svg {
   width: 36px;
   height: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    animation: none;
+  }
+
+  .iconBadge {
+    animation: none;
+  }
 }
 
 @media (max-width: 720px) {
