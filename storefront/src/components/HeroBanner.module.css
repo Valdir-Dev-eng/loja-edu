@@ -1,7 +1,7 @@
 .banner {
   position: relative;
   overflow: hidden;
-  background: var(--color-background);
+  background: var(--color-brand-red);
   padding: var(--space-8) 0;
 }
 
@@ -55,8 +55,8 @@
 
 .iconBadge {
   position: absolute;
-  top: 32%;
-  right: 12%;
+  top: 32.5%;
+  right: 16.7%;
   z-index: 3;
   width: 84px;
   height: 84px;

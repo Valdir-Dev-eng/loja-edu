@@ -1,19 +1,20 @@
 import { Link } from "react-router-dom";
 import styles from "./HeroBanner.module.css";
 
-const WAVE_SHAPE_PATH =
-  "M420,300 C480,170 570,40 700,30 C830,20 900,65 970,55 C1040,45 1100,75 1200,60 L1200,300 Z";
+const WHITE_BLOB_PATH =
+  "M0,0 L1200,0 L1200,280 C1120,320 1050,240 950,230 C870,222 820,290 750,290 C660,290 620,200 520,200 C430,200 400,290 320,320 C260,342 200,340 150,320 C100,300 50,270 0,240 Z";
 
 export function HeroBanner() {
   return (
     <section className={styles.banner}>
       <svg
         className={styles.waveShape}
-        viewBox="0 0 1200 300"
+        viewBox="0 0 1200 400"
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        <path d={WAVE_SHAPE_PATH} fill="var(--color-brand-red)" />
+        <path d={WHITE_BLOB_PATH} fill="var(--color-background)" />
+        <circle cx="1000" cy="130" r="85" fill="var(--color-brand-red)" />
       </svg>
 
       <div className={`container ${styles.inner}`}>
