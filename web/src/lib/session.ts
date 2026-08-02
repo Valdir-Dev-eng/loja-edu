@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type { UserOutput } from "./api-types";
 
@@ -9,7 +10,9 @@ const SESSION_COOKIE = "tokenUser";
 // Nao decodificamos o token aqui — o Express e o unico dono do segredo.
 // Validar contra /auth/me garante que revogacao/expiracao no backend
 // funcionam de imediato, sem duplicar logica de sessao no Next.
-export async function getSessionUser(): Promise<UserOutput | null> {
+// cache() dedupe: layout + page podem chamar isso na mesma renderizacao
+// sem disparar duas idas ao backend.
+export const getSessionUser = cache(async (): Promise<UserOutput | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -24,4 +27,4 @@ export async function getSessionUser(): Promise<UserOutput | null> {
   } catch {
     return null;
   }
-}
+});
