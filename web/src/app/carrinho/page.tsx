@@ -7,6 +7,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useNotifications } from "@/hooks/use-notifications";
 import { finalPriceCents, formatCentsToBRL } from "@/lib/money";
 import { Button } from "@/components/ui/button";
+import { ProductImageFallback } from "@/components/product-image-fallback";
 
 export default function CarrinhoPage() {
   const { items, subtotalCents, updateQuantity, removeItem } = useCart();
@@ -41,9 +42,7 @@ export default function CarrinhoPage() {
                 {item.imageUrl ? (
                   <Image src={item.imageUrl} alt={item.name} fill sizes="80px" className="object-cover" />
                 ) : (
-                  <span className="flex size-full items-center justify-center bg-brand-red-light font-extrabold text-brand-red">
-                    {item.name.charAt(0).toUpperCase()}
-                  </span>
+                  <ProductImageFallback size="sm" />
                 )}
               </div>
 

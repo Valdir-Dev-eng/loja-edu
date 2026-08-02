@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import type { ProductImageOutput } from "@/lib/api-types";
+import { ProductImageFallback } from "@/components/product-image-fallback";
 import { cn } from "@/lib/utils";
 
 interface ProductGalleryProps {
@@ -28,9 +29,7 @@ export function ProductGallery({ productName, images }: ProductGalleryProps) {
             className="object-cover"
           />
         ) : (
-          <span className="flex size-full items-center justify-center bg-brand-red-light text-6xl font-extrabold text-brand-red">
-            {productName.charAt(0).toUpperCase()}
-          </span>
+          <ProductImageFallback size="xl" />
         )}
       </div>
 

@@ -10,6 +10,7 @@ import { discountPercentage, finalPriceCents, formatCentsToBRL } from "@/lib/mon
 import type { ProductOutput } from "@/lib/api-types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ProductImageFallback } from "@/components/product-image-fallback";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -61,9 +62,7 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <span className="flex size-full items-center justify-center bg-brand-red-light text-4xl font-extrabold text-brand-red">
-              {product.name.charAt(0).toUpperCase()}
-            </span>
+            <ProductImageFallback size="lg" />
           )}
           {percentage > 0 && (
             <Badge className="absolute top-2 left-2 rounded-full bg-brand-red px-2.5 py-1 text-white shadow-sm">
