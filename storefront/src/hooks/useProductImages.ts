@@ -24,5 +24,8 @@ export function usePrimaryProductImage(productId: string): string | null {
 
 export function useProductsWithImages(products: ProductOutput[]): ProductOutput[] {
   const results = useQueries({ queries: products.map((product) => productImagesQuery(product.id)) });
-  return products.filter((_, index) => (results[index].data?.length ?? 0) > 0);
+  return products.filter((_, index) => {
+    const { data } = results[index];
+    return data === undefined || data.length > 0;
+  });
 }
