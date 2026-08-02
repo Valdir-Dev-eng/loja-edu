@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Montserrat, JetBrains_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Providers } from "@/components/providers";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -23,6 +24,10 @@ export const metadata: Metadata = {
     "Sorofarma — Farmácia online com entrega rápida em Sorocaba e região.",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#c00612",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,6 +44,7 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <SiteFooter />
         </Providers>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

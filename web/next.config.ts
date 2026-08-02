@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
         hostname: "*.sirv.com",
       },
     ],
+    // Fotos de produto raramente mudam depois de publicadas — cache
+    // longo reduz re-otimizacao e faz visitas repetidas nao rebaixarem
+    // as mesmas imagens.
+    minimumCacheTTL: 2678400, // 31 dias
   },
 
   async rewrites() {
