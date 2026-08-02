@@ -12,6 +12,7 @@
 }
 
 .wordmark {
+  font-family: var(--font-family-brand);
   font-weight: 800;
   font-size: 20px;
   color: var(--color-brand-red);
@@ -24,10 +25,12 @@
 }
 
 .heading {
-  font-size: 14px;
+  font-family: var(--font-family-brand);
+  font-size: 13px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text);
+  letter-spacing: 0.06em;
+  color: var(--color-brand-red);
   margin-bottom: var(--space-3);
 }
 
@@ -42,7 +45,8 @@
   flex-direction: column;
   gap: var(--space-2);
   font-size: 14px;
-  color: var(--color-text-secondary);
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .links a:hover {
@@ -52,8 +56,9 @@
 .bottomBar {
   border-top: 1px solid var(--color-border);
   padding: var(--space-4) 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-secondary);
+  text-align: center;
 }
 
 @media (max-width: 720px) {
