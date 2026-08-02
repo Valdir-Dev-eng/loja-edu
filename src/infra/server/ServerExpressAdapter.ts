@@ -57,7 +57,7 @@ export class ServerExpressAdapter extends ServerPort {
 
     listen(port: number): void {
         this.registerErrorHandler();
-        this.app.listen(port);
+        this.app.listen(port, ()=>console.log(`Servidor rodando em ${port}`));
     }
 
     private registerErrorHandler(): void {

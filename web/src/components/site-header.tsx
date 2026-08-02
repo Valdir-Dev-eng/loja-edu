@@ -30,7 +30,7 @@ export function SiteHeader() {
             src="/sorofarma.png"
             alt=""
             width={56}
-            height={56}
+            height={50}
             priority
             className="h-10 w-auto sm:h-14"
           />
