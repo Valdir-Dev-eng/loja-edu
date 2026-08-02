@@ -48,10 +48,13 @@ export function ProductCard({ product }: { product: ProductOutput }) {
           <span className={styles.price}>{formatCentsToBRL(finalPrice)}</span>
         </div>
 
-        <span className={styles.stock}>{product.stock} em estoque</span>
+        <span className={styles.stock}>
+          <span className={outOfStock ? styles.stockDotEmpty : styles.stockDot} aria-hidden="true" />
+          {outOfStock ? "Sem estoque" : `${product.stock} em estoque`}
+        </span>
 
         <button className={styles.addButton} onClick={handleAdd} disabled={outOfStock}>
-          {outOfStock ? "Sem estoque" : "Adicionar"}
+          {outOfStock ? "Sem estoque" : "Adicionar ao carrinho"}
         </button>
       </div>
     </article>
