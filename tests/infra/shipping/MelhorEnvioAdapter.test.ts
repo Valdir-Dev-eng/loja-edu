@@ -7,6 +7,9 @@ class NullDataAccessPort extends DataAccessPort {
     async findMany<T extends object>(): Promise<T[]> {
         return [];
     }
+    async findManyByField<T extends object>(): Promise<T[]> {
+        return [];
+    }
     async findOne<T extends object>(): Promise<T | undefined> {
         return undefined;
     }

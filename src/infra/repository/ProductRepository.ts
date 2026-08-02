@@ -36,6 +36,11 @@ export class ProductRepository extends RepositoryPort<Product> {
     return dataList.map(data => this.mapToEntity(data));
   }
 
+  async findManyByIds(ids: string[]): Promise<Product[]> {
+    const dataList = await this.dataAccess.findManyByField<any>(this.collectionName, "id", ids);
+    return dataList.map(data => this.mapToEntity(data));
+  }
+
   async exists(filter: Partial<Product>): Promise<boolean> {
     const count = await this.dataAccess.count(this.collectionName, this.toColumnQuery(filter));
     return count > 0;

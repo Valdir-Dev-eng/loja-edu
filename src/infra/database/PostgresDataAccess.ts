@@ -83,6 +83,22 @@ private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
     });
   }
 
+  async findManyByField<T extends object>(
+    collectionName: string,
+    field: string,
+    values: readonly (string | number)[]
+  ): Promise<T[]> {
+    if (values.length === 0) {
+      return [];
+    }
+    return this.executeQuery(async (sql) => {
+      return await sql<T[]>`
+        SELECT * FROM ${sql(collectionName)}
+        WHERE ${sql(field)} IN ${sql(values as (string | number)[])} AND deleted_at IS NULL
+      `;
+    });
+  }
+
   async findOne<T extends object>(collectionName: string, query: Partial<T>): Promise<T | undefined> {
     return this.executeQuery(async (sql) => {
       const [row] = await sql<T[]>`

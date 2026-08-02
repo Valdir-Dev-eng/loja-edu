@@ -27,6 +27,11 @@ export class OrderRepository extends RepositoryPort<Order> {
         return Promise.all(rows.map((row) => this.hydrate(row)));
     }
 
+    async findManyByIds(ids: string[]): Promise<Order[]> {
+        const rows = await this.dataAccess.findManyByField<Record<string, unknown>>(this.collectionName, "id", ids);
+        return Promise.all(rows.map((row) => this.hydrate(row)));
+    }
+
     async findMany(query: FilterQuery<Order>): Promise<Order[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>(
             this.collectionName,

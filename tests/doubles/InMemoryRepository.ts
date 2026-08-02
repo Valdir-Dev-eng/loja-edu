@@ -21,6 +21,11 @@ export class InMemoryRepository<T extends { id: string }> extends RepositoryPort
         return Array.from(this.items.values());
     }
 
+    async findManyByIds(ids: string[]): Promise<T[]> {
+        const idSet = new Set(ids);
+        return Array.from(this.items.values()).filter((item) => idSet.has(item.id));
+    }
+
     async update(id: string, entity: Partial<T>): Promise<void> {
         const current = this.items.get(id);
         if (!current) return;

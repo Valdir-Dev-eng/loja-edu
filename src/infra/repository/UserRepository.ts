@@ -39,6 +39,11 @@ export class UserRepository extends RepositoryPort<User> {
         return rows.map((row) => this.mapToEntity(row));
     }
 
+    async findManyByIds(ids: string[]): Promise<User[]> {
+        const rows = await this.dataAccess.findManyByField<Record<string, unknown>>("users", "id", ids);
+        return rows.map((row) => this.mapToEntity(row));
+    }
+
     async update(id: string, entity: Partial<User>): Promise<void> {
         await this.dataAccess.update("users", { id } as never, this.toColumnQuery(entity));
     }

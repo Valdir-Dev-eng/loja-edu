@@ -37,6 +37,11 @@ export class CategoryRepository extends RepositoryPort<Category> {
         return rows.map((row) => this.mapToEntity(row));
     }
 
+    async findManyByIds(ids: string[]): Promise<Category[]> {
+        const rows = await this.dataAccess.findManyByField<Record<string, unknown>>(this.collectionName, "id", ids);
+        return rows.map((row) => this.mapToEntity(row));
+    }
+
     async exists(filter: Partial<Category>): Promise<boolean> {
         return (await this.dataAccess.count(this.collectionName, this.toColumnQuery(filter))) > 0;
     }

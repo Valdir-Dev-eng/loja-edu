@@ -43,6 +43,11 @@ export class AddressRepository extends RepositoryPort<Address> {
         return rows.map((row) => this.mapToEntity(row));
     }
 
+    async findManyByIds(ids: string[]): Promise<Address[]> {
+        const rows = await this.dataAccess.findManyByField<Record<string, unknown>>("enderecos", "id", ids);
+        return rows.map((row) => this.mapToEntity(row));
+    }
+
     async update(id: string, entity: Partial<Address>): Promise<void> {
         await this.dataAccess.update("enderecos", { id } as never, this.toColumnQuery(entity));
     }
