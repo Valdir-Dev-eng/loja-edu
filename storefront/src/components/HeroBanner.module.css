@@ -68,11 +68,11 @@
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  background: var(--color-brand-red);
+  background: var(--color-brand-red-dark);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.25), var(--shadow-md);
+  box-shadow: 0 0 0 5px #fff, var(--shadow-md);
 }
 
 @media (max-width: 720px) {
