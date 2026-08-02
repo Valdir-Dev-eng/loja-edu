@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../hooks/useAuth";
+import { useNotifications } from "../hooks/useNotifications";
 import { api, ApiError } from "../lib/api";
 import type { CompleteOnboardingOutput } from "../types/api";
 import styles from "./Onboarding.module.css";
@@ -18,6 +19,7 @@ export function Onboarding() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isLoading } = useAuth();
+  const { notify } = useNotifications();
 
   const [fullName, setFullName] = useState("");
   const [document, setDocument] = useState("");
@@ -96,13 +98,12 @@ export function Onboarding() {
         ],
       });
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      notify({ type: "success", title: "Cadastro concluído", message: "Agora você já pode finalizar compras na Sorofarma." });
       navigate("/", { replace: true });
     } catch (submitError) {
-      if (submitError instanceof ApiError) {
-        setError(submitError.body.error);
-      } else {
-        setError("Não foi possível concluir o cadastro. Tente novamente.");
-      }
+      const message = submitError instanceof ApiError ? submitError.body.error : "Não foi possível concluir o cadastro. Tente novamente.";
+      setError(message);
+      notify({ type: "error", title: "Não foi possível concluir o cadastro", message });
     } finally {
       setSubmitting(false);
     }

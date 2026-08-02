@@ -1,18 +1,21 @@
 import { FormEvent, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../hooks/useCart";
+import { useNotifications } from "../hooks/useNotifications";
 import { useProduct } from "../hooks/useProducts";
 import { useProductImages } from "../hooks/useProductImages";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { discountPercentage, finalPriceCents, formatCentsToBRL } from "../lib/money";
 import type { ShippingOption } from "../types/api";
 import styles from "./ProductDetail.module.css";
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: productData, isLoading } = useProduct(id);
   const { data: images } = useProductImages(id ?? "");
   const { addItem } = useCart();
+  const { notify } = useNotifications();
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -27,7 +30,14 @@ export function ProductDetail() {
   }
 
   if (!productData) {
-    return <p className={`container ${styles.status}`}>Produto não encontrado.</p>;
+    return (
+      <div className={`container ${styles.status}`}>
+        <p>Produto não encontrado.</p>
+        <Link to="/produtos" className={styles.statusLink}>
+          Ver todos os produtos
+        </Link>
+      </div>
+    );
   }
 
   const product = productData;
@@ -35,6 +45,7 @@ export function ProductDetail() {
   const finalPrice = finalPriceCents(product.priceCents, product.discountCents);
   const orderedImages = images ? [...images].sort((a, b) => a.order - b.order) : [];
   const activeImage = orderedImages[selectedImageIndex];
+  const outOfStock = product.stock <= 0;
 
   async function handleCalculateShipping(event: FormEvent) {
     event.preventDefault();
@@ -51,16 +62,21 @@ export function ProductDetail() {
         items: [{ productId: product.id, quantity }],
       });
       setShippingOptions(options);
+      if (options.length === 0) {
+        notify({ type: "info", title: "Sem opções de frete", message: "Não há frete disponível para esse CEP." });
+      }
     } catch (error) {
       setShippingOptions(null);
-      setShippingError(error instanceof Error ? error.message : "Não foi possível calcular o frete.");
+      const message = error instanceof ApiError ? error.body.error : "Não foi possível calcular o frete. Verifique sua conexão e tente novamente.";
+      setShippingError(message);
+      notify({ type: "error", title: "Erro ao calcular o frete", message });
     } finally {
       setShippingLoading(false);
     }
   }
 
-  function handleAddToCart() {
-    addItem(
+  function handleAddToCart(): boolean {
+    const result = addItem(
       {
         productId: product.id,
         name: product.name,
@@ -71,8 +87,26 @@ export function ProductDetail() {
       },
       quantity
     );
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+
+    if (result.addedQuantity > 0) {
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+      notify({ type: "success", title: "Adicionado ao carrinho", message: `${result.addedQuantity}x ${product.name}` });
+      return true;
+    }
+
+    notify({
+      type: "warning",
+      title: "Limite de estoque atingido",
+      message: `Você já tem no carrinho todo o estoque disponível de "${product.name}".`,
+    });
+    return false;
+  }
+
+  function handleBuyNow() {
+    if (handleAddToCart()) {
+      navigate("/carrinho");
+    }
   }
 
   return (
@@ -107,46 +141,78 @@ export function ProductDetail() {
         <div className={styles.info}>
           <h1 className={styles.name}>{product.name}</h1>
 
-          <div className={styles.priceRow}>
-            {percentage > 0 && <span className={styles.oldPrice}>{formatCentsToBRL(product.priceCents)}</span>}
+          <div className={styles.buyBox}>
+            <div className={styles.priceRow}>
+              {percentage > 0 && <span className={styles.oldPrice}>{formatCentsToBRL(product.priceCents)}</span>}
+              {percentage > 0 && <span className={styles.discountBadge}>-{percentage}%</span>}
+            </div>
             <span className={styles.price}>{formatCentsToBRL(finalPrice)}</span>
-            {percentage > 0 && <span className={styles.discountBadge}>-{percentage}%</span>}
-          </div>
 
-          <p className={styles.stock}>
-            {product.stock > 0 ? `${product.stock} em estoque` : "Produto sem estoque no momento"}
-          </p>
+            <p className={styles.stock}>
+              <span className={outOfStock ? styles.stockDotEmpty : styles.stockDot} aria-hidden="true" />
+              {outOfStock ? "Produto sem estoque no momento" : `${product.stock} em estoque`}
+            </p>
 
-          <div className={styles.quantityRow}>
-            <label htmlFor="quantity">Quantidade</label>
-            <div className={styles.quantityStepper}>
-              <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Diminuir quantidade">
-                −
+            <div className={styles.quantityRow}>
+              <span id="quantity-label">Quantidade</span>
+              <div className={styles.quantityStepper}>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  aria-label="Diminuir quantidade"
+                >
+                  −
+                </button>
+                <p className={styles.quantityValue} aria-labelledby="quantity-label" aria-live="polite">
+                  {quantity}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                  aria-label="Aumentar quantidade"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {quantity > 1 && (
+              <div className={styles.totalRow}>
+                <span>Total</span>
+                <span className={styles.totalValue}>{formatCentsToBRL(finalPrice * quantity)}</span>
+              </div>
+            )}
+
+            <div className={styles.ctaGroup}>
+              <button className={styles.buyNowButton} onClick={handleBuyNow} disabled={outOfStock}>
+                Comprar agora
               </button>
-              <input
-                id="quantity"
-                type="number"
-                min={1}
-                max={product.stock}
-                value={quantity}
-                onChange={(event) => setQuantity(Math.min(Math.max(1, Number(event.target.value)), product.stock))}
-              />
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                aria-label="Aumentar quantidade"
-              >
-                +
+              <button className={styles.addButton} onClick={handleAddToCart} disabled={outOfStock}>
+                {added ? "Adicionado ✓" : "Adicionar ao carrinho"}
               </button>
             </div>
           </div>
 
-          <button className={styles.addButton} onClick={handleAddToCart} disabled={product.stock <= 0}>
-            {added ? "Adicionado ✓" : "Adicionar ao carrinho"}
-          </button>
-
           <div className={styles.shippingBox}>
-            <h2 className={styles.shippingTitle}>Calcular frete e prazo</h2>
+            <h2 className={styles.shippingTitle}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M3 7H14V17H3V7Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M14 10H18L21 13V17H14V10Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                <circle cx="7.5" cy="18.5" r="1.6" stroke="currentColor" strokeWidth="2" />
+                <circle cx="17.5" cy="18.5" r="1.6" stroke="currentColor" strokeWidth="2" />
+              </svg>
+              Calcular frete e prazo
+            </h2>
             <form className={styles.shippingForm} onSubmit={handleCalculateShipping}>
               <input
                 type="text"

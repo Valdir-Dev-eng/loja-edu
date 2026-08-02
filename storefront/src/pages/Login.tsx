@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useNotifications } from "../hooks/useNotifications";
 import styles from "./Login.module.css";
 
 export function Login() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
+  const { notify } = useNotifications();
   const [error, setError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
 
@@ -26,7 +28,9 @@ export function Login() {
       }
       window.location.href = body.url;
     } catch {
-      setError("Não foi possível iniciar o login com o Google. Tente novamente.");
+      const message = "Não foi possível iniciar o login com o Google. Tente novamente.";
+      setError(message);
+      notify({ type: "error", title: "Falha ao entrar", message });
       setRedirecting(false);
     }
   }

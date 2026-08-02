@@ -1,5 +1,5 @@
 .section {
-  padding: var(--space-7) 0;
+  padding-top: var(--space-7);
 }
 
 .grid {

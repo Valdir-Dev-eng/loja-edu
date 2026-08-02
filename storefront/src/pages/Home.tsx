@@ -1,9 +1,7 @@
-import { CategoryCard } from "../components/CategoryCard";
 import { HeroBanner } from "../components/HeroBanner";
 import { PromoBanner } from "../components/PromoBanner";
 import { ProductCard } from "../components/ProductCard";
 import { TrustSection } from "../components/TrustSection";
-import { useCategories } from "../hooks/useCategories";
 import { useProductsWithImages } from "../hooks/useProductImages";
 import { useProducts } from "../hooks/useProducts";
 import styles from "./Home.module.css";
@@ -12,7 +10,6 @@ const CURATED_SECTION_LIMIT = 8;
 
 export function Home() {
   const { data: products } = useProducts();
-  const { data: categories } = useCategories();
   const productsWithImages = useProductsWithImages(products ?? []);
 
   const discountedProducts = productsWithImages.filter(
@@ -24,18 +21,7 @@ export function Home() {
     <div>
       <HeroBanner />
 
-      {categories && categories.length > 0 && (
-        <section className={styles.section}>
-          <div className="container">
-            <h2 className={styles.heading}>Compre por categoria</h2>
-            <div className={styles.categoryGrid}>
-              {categories.map((category) => (
-                <CategoryCard key={category.id} category={category} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <TrustSection />
 
       {discountedProducts.length > 0 && (
         <section className={styles.section}>
@@ -62,8 +48,6 @@ export function Home() {
           </div>
         </section>
       )}
-
-      <TrustSection />
     </div>
   );
 }

@@ -2,13 +2,25 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useCart } from "../hooks/useCart";
+import { useNotifications } from "../hooks/useNotifications";
 import styles from "./Header.module.css";
 
 export function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
+  const { notify } = useNotifications();
   const [search, setSearch] = useState("");
+
+  async function handleLogout() {
+    try {
+      await logout();
+      notify({ type: "info", title: "Sessão encerrada", message: "Até breve!" });
+      navigate("/", { replace: true });
+    } catch {
+      notify({ type: "error", title: "Não foi possível sair", message: "Tente novamente em instantes." });
+    }
+  }
 
   function handleSearch(event: FormEvent) {
     event.preventDefault();
@@ -45,9 +57,10 @@ export function Header() {
                 Olá, {user.fullName?.split(" ")[0] ?? user.username}
               </summary>
               <div className={styles.accountDropdown}>
+                <Link to="/perfil">Meu perfil</Link>
                 <Link to="/pedidos">Meus pedidos</Link>
                 <Link to="/enderecos">Meus endereços</Link>
-                <button type="button" onClick={logout}>
+                <button type="button" onClick={handleLogout}>
                   Sair
                 </button>
               </div>

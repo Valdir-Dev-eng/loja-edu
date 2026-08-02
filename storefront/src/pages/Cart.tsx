@@ -1,10 +1,17 @@
 import { Link } from "react-router-dom";
 import { useCart } from "../hooks/useCart";
+import { useNotifications } from "../hooks/useNotifications";
 import { finalPriceCents, formatCentsToBRL } from "../lib/money";
 import styles from "./Cart.module.css";
 
 export function Cart() {
   const { items, subtotalCents, updateQuantity, removeItem } = useCart();
+  const { notify } = useNotifications();
+
+  function handleRemove(productId: string, name: string) {
+    removeItem(productId);
+    notify({ type: "info", title: "Item removido", message: name });
+  }
 
   if (items.length === 0) {
     return (
@@ -65,7 +72,7 @@ export function Cart() {
                 <button
                   type="button"
                   className={styles.removeButton}
-                  onClick={() => removeItem(item.productId)}
+                  onClick={() => handleRemove(item.productId, item.name)}
                 >
                   Remover
                 </button>

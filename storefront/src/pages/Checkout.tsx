@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useAddresses } from "../hooks/useAddresses";
 import { useCart } from "../hooks/useCart";
-import { api } from "../lib/api";
+import { useNotifications } from "../hooks/useNotifications";
+import { api, ApiError } from "../lib/api";
 import { formatCentsToBRL } from "../lib/money";
 import type { CheckoutOrderOutput, PaymentStatusOutput, ShippingOption } from "../types/api";
 import styles from "./Checkout.module.css";
@@ -16,6 +17,7 @@ export function Checkout() {
   const { user, isLoading: userLoading } = useAuth();
   const { items, subtotalCents, clear } = useCart();
   const { data: addresses, isLoading: addressesLoading } = useAddresses(Boolean(user));
+  const { notify } = useNotifications();
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[] | null>(null);
@@ -64,6 +66,13 @@ export function Checkout() {
         setPaymentStatus(status.status);
         if (status.status === "PAID") {
           clear();
+          notify({ type: "success", title: "Pagamento aprovado", message: "Seu pedido foi confirmado." });
+        } else if (FINAL_ORDER_STATUSES.has(status.status)) {
+          notify({
+            type: "error",
+            title: "Pagamento não concluído",
+            message: `Status: ${status.status}. Tente novamente a partir do carrinho.`,
+          });
         }
       } catch {
         return;
@@ -95,8 +104,13 @@ export function Checkout() {
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       });
       setShippingOptions(options);
-    } catch {
-      setError("Não foi possível calcular o frete para este endereço.");
+      if (options.length === 0) {
+        notify({ type: "info", title: "Sem opções de frete", message: "Não há frete disponível para este endereço." });
+      }
+    } catch (shippingError) {
+      const message = shippingError instanceof ApiError ? shippingError.body.error : "Não foi possível calcular o frete para este endereço.";
+      setError(message);
+      notify({ type: "error", title: "Erro ao calcular o frete", message });
     } finally {
       setShippingLoading(false);
     }
@@ -121,17 +135,24 @@ export function Checkout() {
       });
       setOrder(result);
       setPaymentStatus(result.status);
-    } catch {
-      setError("Não foi possível concluir o pedido. Tente novamente.");
+      notify({ type: "success", title: "Pedido criado", message: "Escaneie o QR Code ou copie o código PIX para pagar." });
+    } catch (checkoutError) {
+      const message = checkoutError instanceof ApiError ? checkoutError.body.error : "Não foi possível concluir o pedido. Tente novamente.";
+      setError(message);
+      notify({ type: "error", title: "Não foi possível concluir o pedido", message });
     } finally {
       setSubmitting(false);
     }
   }
 
   function handleCopyPixCode() {
-    if (order) {
-      navigator.clipboard.writeText(order.qrCode);
+    if (!order) {
+      return;
     }
+    navigator.clipboard
+      .writeText(order.qrCode)
+      .then(() => notify({ type: "success", title: "Código copiado", message: "Cole no app do seu banco para pagar." }))
+      .catch(() => notify({ type: "error", title: "Não foi possível copiar", message: "Copie o código manualmente." }));
   }
 
   if (order) {

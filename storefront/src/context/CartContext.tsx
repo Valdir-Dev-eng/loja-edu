@@ -10,11 +10,18 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface AddItemResult {
+  /** how many units actually ended up added, after clamping to available stock */
+  addedQuantity: number;
+  /** true when the requested quantity had to be reduced because stock was already maxed out in the cart */
+  cappedByStock: boolean;
+}
+
 export interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotalCents: number;
-  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
+  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => AddItemResult;
   updateQuantity: (productId: string, quantity: number) => void;
   removeItem: (productId: string) => void;
   clear: () => void;
@@ -40,17 +47,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addItem = useCallback((item: Omit<CartItem, "quantity">, quantity = 1) => {
+  const addItem = useCallback((item: Omit<CartItem, "quantity">, quantity = 1): AddItemResult => {
+    const result: AddItemResult = { addedQuantity: 0, cappedByStock: false };
     setItems((current) => {
       const existing = current.find((cartItem) => cartItem.productId === item.productId);
       if (existing) {
         const nextQuantity = Math.min(existing.quantity + quantity, existing.stock);
+        result.addedQuantity = nextQuantity - existing.quantity;
+        result.cappedByStock = result.addedQuantity < quantity;
         return current.map((cartItem) =>
           cartItem.productId === item.productId ? { ...cartItem, quantity: nextQuantity } : cartItem
         );
       }
-      return [...current, { ...item, quantity: Math.min(quantity, item.stock) }];
+      const initialQuantity = Math.min(quantity, item.stock);
+      result.addedQuantity = initialQuantity;
+      result.cappedByStock = initialQuantity < quantity;
+      return [...current, { ...item, quantity: initialQuantity }];
     });
+    return result;
   }, []);
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {

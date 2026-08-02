@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useAddresses, useAddressMutations } from "../hooks/useAddresses";
+import { useNotifications } from "../hooks/useNotifications";
 import { ApiError } from "../lib/api";
 import styles from "./Addresses.module.css";
 
@@ -20,6 +21,7 @@ export function Addresses() {
   const { user, isLoading: userLoading } = useAuth();
   const { data: addresses, isLoading } = useAddresses(Boolean(user));
   const { createAddress, deleteAddress } = useAddressMutations();
+  const { notify } = useNotifications();
 
   const [showForm, setShowForm] = useState(false);
   const [recipientName, setRecipientName] = useState("");
@@ -98,8 +100,11 @@ export function Addresses() {
       });
       resetForm();
       setShowForm(false);
+      notify({ type: "success", title: "Endereço salvo", message: label ? `"${label}" adicionado aos seus endereços.` : undefined });
     } catch (submitError) {
-      setError(submitError instanceof ApiError ? submitError.body.error : "Não foi possível salvar o endereço.");
+      const message = submitError instanceof ApiError ? submitError.body.error : "Não foi possível salvar o endereço.";
+      setError(message);
+      notify({ type: "error", title: "Não foi possível salvar o endereço", message });
     } finally {
       setSubmitting(false);
     }
@@ -109,6 +114,9 @@ export function Addresses() {
     setDeletingId(addressId);
     try {
       await deleteAddress(addressId);
+      notify({ type: "info", title: "Endereço removido" });
+    } catch {
+      notify({ type: "error", title: "Não foi possível remover o endereço", message: "Tente novamente em instantes." });
     } finally {
       setDeletingId(null);
     }

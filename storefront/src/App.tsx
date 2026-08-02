@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { NotificationStack } from "./components/NotificationStack";
+import { useNotifications } from "./hooks/useNotifications";
 import { Home } from "./pages/Home";
 import { Products } from "./pages/Products";
 import { ProductDetail } from "./pages/ProductDetail";
@@ -11,9 +13,11 @@ import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
 import { Orders } from "./pages/Orders";
 import { Addresses } from "./pages/Addresses";
+import { Profile } from "./pages/Profile";
 
 export function App() {
   const navigate = useNavigate();
+  const { notify } = useNotifications();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -21,7 +25,13 @@ export function App() {
       return;
     }
     const onboardingPending = params.get("onboardingPending") === "true";
-    navigate(onboardingPending ? "/onboarding" : "/", { replace: true });
+    if (onboardingPending) {
+      navigate("/onboarding", { replace: true });
+    } else {
+      notify({ type: "success", title: "Login realizado", message: "Bem-vindo(a) de volta à Sorofarma!" });
+      navigate("/", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   return (
@@ -38,9 +48,11 @@ export function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/pedidos" element={<Orders />} />
           <Route path="/enderecos" element={<Addresses />} />
+          <Route path="/perfil" element={<Profile />} />
         </Routes>
       </main>
       <Footer />
+      <NotificationStack />
     </div>
   );
 }
