@@ -25,8 +25,8 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("POST", "/auth/refresh", ["authenticated-read"]);
         });
 
-        it("GET /auth/me -> authenticated-read", () => {
-            expectTierIds("GET", "/auth/me", ["authenticated-read"]);
+        it("GET /auth/me -> session-check (chamada implicita em toda navegacao/prefetch, nao pode ter piso por-segundo)", () => {
+            expectTierIds("GET", "/auth/me", ["session-check"]);
         });
 
         it("POST /auth/onboarding -> generic-write", () => {

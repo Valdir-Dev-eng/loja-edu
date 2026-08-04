@@ -26,6 +26,24 @@ const AUTHENTICATED_READ: RateLimitTierConfig = {
     blockDurationMs: FIVE_MINUTES_MS,
 };
 
+// /auth/me nao e' uma acao deliberada do usuario — todo Server Component que
+// depende de sessao chama getSessionUser(), e o Next.js faz prefetch
+// automatico de todo <Link> visivel na tela, cada um disparando seu proprio
+// render (e portanto seu proprio /auth/me). minIntervalMs:1000 da
+// AUTHENTICATED_READ bloqueava a segunda chamada quase sempre — e
+// getSessionUser() trata qualquer resposta nao-200 (429 incluso) como
+// "deslogado", entao o header piscava pra visitante a cada navegacao com
+// mais de um link visivel. Sem o piso por-segundo, so a janela de 5min
+// protege — adequada pra uma checagem barata (JWT + cache) chamada
+// implicitamente, nao uma acao sensivel.
+const SESSION_CHECK: RateLimitTierConfig = {
+    tierId: "session-check",
+    minIntervalMs: 0,
+    windowMs: FIVE_MINUTES_MS,
+    maxRequestsInWindow: 300,
+    blockDurationMs: FIVE_MINUTES_MS,
+};
+
 const GENERIC_WRITE: RateLimitTierConfig = {
     tierId: "generic-write",
     minIntervalMs: 3000,
@@ -55,7 +73,7 @@ const ROUTE_RULES: RouteRateLimitRule[] = [
     { routeId: "auth-google-callback", method: "GET", pathPattern: "/auth/google/callback", tiers: [OAUTH] },
     { routeId: "auth-logout", method: "POST", pathPattern: "/auth/logout", tiers: [AUTHENTICATED_READ] },
     { routeId: "auth-refresh", method: "POST", pathPattern: "/auth/refresh", tiers: [AUTHENTICATED_READ] },
-    { routeId: "auth-me", method: "GET", pathPattern: "/auth/me", tiers: [AUTHENTICATED_READ] },
+    { routeId: "auth-me", method: "GET", pathPattern: "/auth/me", tiers: [SESSION_CHECK] },
     { routeId: "auth-onboarding", method: "POST", pathPattern: "/auth/onboarding", tiers: [GENERIC_WRITE] },
     { routeId: "cart-list", method: "GET", pathPattern: "/cart", tiers: [AUTHENTICATED_READ] },
     { routeId: "cart-item-add", method: "POST", pathPattern: "/cart/items", tiers: [GENERIC_WRITE] },
