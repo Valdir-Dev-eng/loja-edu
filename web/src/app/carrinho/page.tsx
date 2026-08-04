@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ProductImageFallback } from "@/components/product-image-fallback";
 
 export default function CarrinhoPage() {
-  const { items, subtotalCents, updateQuantity, removeItem } = useCart();
+  const { items, subtotalCents, isLoading, updateQuantity, removeItem } = useCart();
   const { notify } = useNotifications();
 
   async function handleRemove(productId: string, name: string) {
@@ -28,6 +27,14 @@ export default function CarrinhoPage() {
     } catch {
       notify({ type: "error", title: "Não foi possível atualizar a quantidade", message: "Tente novamente." });
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto flex max-w-(--content-max-width) flex-col items-center gap-4 px-6 py-24 text-center">
+        <p className="text-muted-foreground">Carregando carrinho...</p>
+      </div>
+    );
   }
 
   if (items.length === 0) {
@@ -51,11 +58,7 @@ export default function CarrinhoPage() {
           return (
             <li key={item.productId} className="flex items-center gap-4 rounded-xl border border-border p-4">
               <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-secondary">
-                {item.imageUrl ? (
-                  <Image src={item.imageUrl} alt={item.name} fill sizes="80px" className="object-cover" />
-                ) : (
-                  <ProductImageFallback size="sm" />
-                )}
+                <ProductImageFallback size="sm" />
               </div>
 
               <div className="flex min-w-0 flex-1 flex-col gap-1">

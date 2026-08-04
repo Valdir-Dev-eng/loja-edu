@@ -14,8 +14,7 @@ import { CartBadge } from "@/components/cart-badge";
 import { AccountMenu } from "@/components/account-menu";
 import { MobileLogoutButton } from "@/components/mobile-logout-button";
 import { OnboardingReminder } from "@/components/onboarding-reminder";
-import { CartHydrator } from "@/components/cart-hydrator";
-import { getCartItems, getSessionUser } from "@/lib/session";
+import { getSessionUser } from "@/lib/session";
 import type { UserOutput } from "@/lib/api-types";
 
 const NAV_LINKS = [
@@ -74,17 +73,6 @@ async function MobileAccountLinks() {
 async function OnboardingSlot() {
   const user: UserOutput | null = await getSessionUser();
   return <OnboardingReminder pending={user !== null && !user.onboardingCompleted} />;
-}
-
-// null = visitante (fica no localStorage); [] ou itens = logado (o
-// CartHydrator sincroniza o CartProvider com o backend uma unica vez).
-async function CartHydrationSlot() {
-  const user = await getSessionUser();
-  if (!user) {
-    return <CartHydrator serverItems={null} />;
-  }
-  const cartItems = await getCartItems();
-  return <CartHydrator serverItems={cartItems ?? []} />;
 }
 
 export function SiteHeader() {
@@ -192,9 +180,6 @@ export function SiteHeader() {
 
       <Suspense fallback={null}>
         <OnboardingSlot />
-      </Suspense>
-      <Suspense fallback={null}>
-        <CartHydrationSlot />
       </Suspense>
     </header>
   );

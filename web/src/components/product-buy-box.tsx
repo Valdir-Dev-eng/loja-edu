@@ -13,10 +13,9 @@ import { Badge } from "@/components/ui/badge";
 
 interface ProductBuyBoxProps {
   product: ProductOutput;
-  activeImageUrl: string | null;
 }
 
-export function ProductBuyBox({ product, activeImageUrl }: ProductBuyBoxProps) {
+export function ProductBuyBox({ product }: ProductBuyBoxProps) {
   const router = useRouter();
   const { addItem } = useCart();
   const { notify } = useNotifications();
@@ -33,17 +32,7 @@ export function ProductBuyBox({ product, activeImageUrl }: ProductBuyBoxProps) {
   const outOfStock = product.stock <= 0;
 
   async function handleAddToCart(): Promise<boolean> {
-    const result = await addItem(
-      {
-        productId: product.id,
-        name: product.name,
-        priceCents: product.priceCents,
-        discountCents: product.discountCents,
-        stock: product.stock,
-        imageUrl: activeImageUrl,
-      },
-      quantity
-    );
+    const result = await addItem(product.id, quantity);
 
     if (result.addedQuantity > 0) {
       setAdded(true);

@@ -23,7 +23,6 @@ export default async function ProdutoPage({ params }: ProdutoPageProps) {
   }
 
   const images = await getProductImages(id);
-  const orderedImages = [...images].sort((a, b) => a.order - b.order);
 
   return (
     <div className="mx-auto max-w-(--content-max-width) px-4 py-8 sm:px-6">
@@ -32,7 +31,7 @@ export default async function ProdutoPage({ params }: ProdutoPageProps) {
 
         <div className="flex flex-col gap-5">
           <h1 className="font-sans text-2xl font-extrabold">{product.name}</h1>
-          <ProductBuyBox product={product} activeImageUrl={orderedImages[0]?.url ?? null} />
+          <ProductBuyBox product={product} />
         </div>
       </div>
     </div>
