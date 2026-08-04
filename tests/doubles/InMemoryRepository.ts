@@ -59,6 +59,17 @@ export class InMemoryRepository<T extends { id: string }> extends RepositoryPort
         return this.items.delete(id) ? 1 : 0;
     }
 
+    async decrementFieldIfSufficient(id: string, field: keyof T & string, amount: number): Promise<boolean> {
+        const item = this.items.get(id);
+        if (!item) return false;
+        const currentValue = item[field] as unknown as number;
+        if (typeof currentValue !== "number" || currentValue < amount) {
+            return false;
+        }
+        (item[field] as unknown as number) = currentValue - amount;
+        return true;
+    }
+
     private matches(item: T, query: Partial<T>): boolean {
         return Object.entries(query).every(([key, value]) => (item as Record<string, unknown>)[key] === value);
     }

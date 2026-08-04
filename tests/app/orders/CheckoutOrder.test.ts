@@ -10,6 +10,14 @@ import { InMemoryRepository } from "../../doubles/InMemoryRepository";
 import { FakePaymentGatewayPort } from "../../doubles/FakePaymentGatewayPort";
 import { FakeShippingGatewayPort } from "../../doubles/FakeShippingGatewayPort";
 
+class ProductRepositoryWithLostRace extends InMemoryRepository<Product> {
+    async decrementFieldIfSufficient(): Promise<boolean> {
+        // Simula outra compra concorrente consumindo o estoque entre a
+        // leitura inicial (buildItems) e o decremento atomico de verdade.
+        return false;
+    }
+}
+
 let sequence = 0;
 const createId = () => `generated-id-${++sequence}`;
 
@@ -214,6 +222,28 @@ describe("CheckoutOrder", () => {
         ).rejects.toThrow(BusinessRuleError);
         await expect(
             context.useCase.execute(buildCheckoutInput(user.id, address.id, [{ productId: product.id, quantity: 5 }]))
+        ).rejects.toThrow("Estoque insuficiente para o produto: Dipirona");
+    });
+
+    it("recusa checkout quando o estoque acaba entre a checagem inicial e o decremento atômico (corrida perdida)", async () => {
+        const orderRepo = new InMemoryRepository<Order>();
+        const productRepo = new ProductRepositoryWithLostRace();
+        const addressRepo = new InMemoryRepository<Address>();
+        const userRepo = new InMemoryRepository<User>();
+        const paymentGateway = new FakePaymentGatewayPort();
+        const shippingGateway = new FakeShippingGatewayPort();
+        shippingGateway.queueQuoteOptions([
+            { serviceId: DEFAULT_SHIPPING_SERVICE_ID, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
+        ]);
+        const raceContext = { useCase: new CheckoutOrder(orderRepo, productRepo, addressRepo, userRepo, paymentGateway, shippingGateway, createId), orderRepo, productRepo, addressRepo, userRepo, paymentGateway, shippingGateway };
+        const { user, address } = await buildUser(raceContext);
+        const product = await buildProduct(raceContext, "Dipirona", 1990, 10);
+
+        await expect(
+            raceContext.useCase.execute(buildCheckoutInput(user.id, address.id, [{ productId: product.id, quantity: 1 }]))
+        ).rejects.toThrow(BusinessRuleError);
+        await expect(
+            raceContext.useCase.execute(buildCheckoutInput(user.id, address.id, [{ productId: product.id, quantity: 1 }]))
         ).rejects.toThrow("Estoque insuficiente para o produto: Dipirona");
     });
 

@@ -134,11 +134,22 @@ private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
   async remove(collectionName: string, query: Partial<any>): Promise<number> {
     return this.executeQuery(async (sql) => {
       const result = await sql`
-        UPDATE ${sql(collectionName)} 
-        SET deleted_at = CURRENT_TIMESTAMP 
+        UPDATE ${sql(collectionName)}
+        SET deleted_at = CURRENT_TIMESTAMP
         WHERE ${this.buildWhere(sql, query)}
       `;
       return result.count;
+    });
+  }
+
+  async decrementIfSufficient(collectionName: string, id: string, field: string, amount: number): Promise<boolean> {
+    return this.executeQuery(async (sql) => {
+      const result = await sql`
+        UPDATE ${sql(collectionName)}
+        SET ${sql(field)} = ${sql(field)} - ${amount}
+        WHERE id = ${id} AND ${sql(field)} >= ${amount} AND deleted_at IS NULL
+      `;
+      return result.count > 0;
     });
   }
 }

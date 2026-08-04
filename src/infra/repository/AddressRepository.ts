@@ -60,6 +60,10 @@ export class AddressRepository extends RepositoryPort<Address> {
         return await this.dataAccess.remove("enderecos", { id });
     }
 
+    async decrementFieldIfSufficient(id: string, field: keyof Address & string, amount: number): Promise<boolean> {
+        return this.dataAccess.decrementIfSufficient("enderecos", id, field, amount);
+    }
+
     private toColumnQuery(entity: Partial<Address>): Record<string, unknown> {
         const columns: Record<string, unknown> = {};
         if (entity.id !== undefined) columns.id = entity.id;

@@ -56,6 +56,10 @@ export class ProductImageRepository extends RepositoryPort<ProductImage> {
         return await this.dataAccess.remove(this.collectionName, { id });
     }
 
+    async decrementFieldIfSufficient(id: string, field: keyof ProductImage & string, amount: number): Promise<boolean> {
+        return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
+    }
+
     private toColumnQuery(entity: Partial<ProductImage>): Record<string, unknown> {
         const columns: Record<string, unknown> = {};
         if (entity.id !== undefined) columns.id = entity.id;

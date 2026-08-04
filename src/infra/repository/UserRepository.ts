@@ -56,6 +56,10 @@ export class UserRepository extends RepositoryPort<User> {
         return await this.dataAccess.remove("users", { id });
     }
 
+    async decrementFieldIfSufficient(id: string, field: keyof User & string, amount: number): Promise<boolean> {
+        return this.dataAccess.decrementIfSufficient("users", id, field, amount);
+    }
+
     private toColumnQuery(entity: Partial<User>): Record<string, unknown> {
         const columns: Record<string, unknown> = {};
         if (entity.id !== undefined) columns.id = entity.id;

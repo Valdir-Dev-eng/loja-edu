@@ -60,6 +60,10 @@ export class OrderRepository extends RepositoryPort<Order> {
         return await this.dataAccess.remove(this.collectionName, { id });
     }
 
+    async decrementFieldIfSufficient(id: string, field: keyof Order & string, amount: number): Promise<boolean> {
+        return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
+    }
+
     private async hydrate(row: Record<string, unknown>): Promise<Order> {
         const [order] = await this.hydrateMany([row]);
         return order;

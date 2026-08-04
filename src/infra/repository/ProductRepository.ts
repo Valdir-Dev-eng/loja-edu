@@ -55,6 +55,10 @@ export class ProductRepository extends RepositoryPort<Product> {
     return await this.dataAccess.remove(this.collectionName, { id } as any);
   }
 
+  async decrementFieldIfSufficient(id: string, field: keyof Product & string, amount: number): Promise<boolean> {
+    return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
+  }
+
   private toColumns(entity: Product): Record<string, unknown> {
     return {
       id: entity.id,

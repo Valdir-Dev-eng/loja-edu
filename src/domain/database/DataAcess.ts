@@ -7,4 +7,5 @@ export abstract class DataAccessPort {
   abstract findBy<T extends object>(query: Partial<T>): Promise<T | null> ;
   abstract remove(collectionName: string, query: Partial<any>): Promise<number>;
   abstract count<T extends object>(collectionName: string, query: Partial<T>): Promise<number>;
+  abstract decrementIfSufficient(collectionName: string, id: string, field: string, amount: number): Promise<boolean>;
 }

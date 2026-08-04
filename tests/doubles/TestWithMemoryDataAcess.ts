@@ -140,4 +140,19 @@ export class TestWithMemoryDataAcess extends DataAccessPort {
             (row) => this.notDeleted(row) && this.matches(row, query as Row)
         ).length;
     }
+
+    async decrementIfSufficient(collectionName: string, id: string, field: string, amount: number): Promise<boolean> {
+        this.countCall(collectionName, "decrementIfSufficient");
+        await this.yieldToEventLoop();
+        // A partir daqui, sem nenhum outro await: igual a um UPDATE...WHERE
+        // atomico no Postgres real, nenhuma outra chamada concorrente pode
+        // intercalar entre a checagem e a escrita (single-threaded event loop).
+        const row = this.table(collectionName).find((candidate) => this.notDeleted(candidate) && candidate.id === id);
+        if (!row || row[field] < amount) {
+            return false;
+        }
+        row[field] -= amount;
+        row.updated_at = new Date().toISOString();
+        return true;
+    }
 }

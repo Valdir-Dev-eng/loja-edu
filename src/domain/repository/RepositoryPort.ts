@@ -17,4 +17,5 @@ export abstract class RepositoryPort<T> {
   
   abstract exists(filter: Partial<T>): Promise<boolean>;
   abstract delete(id: string): Promise<number>;
+  abstract decrementFieldIfSufficient(id: string, field: keyof T & string, amount: number): Promise<boolean>;
 }

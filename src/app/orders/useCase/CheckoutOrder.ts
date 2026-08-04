@@ -117,11 +117,15 @@ export class CheckoutOrder {
     }
 
     private async decrementStock(items: OrderItem[], productsById: Map<string, Product>): Promise<void> {
+        // UPDATE ... WHERE stock >= quantidade, atomico no banco — nao le e
+        // depois escreve o valor calculado, que perde decremento sob
+        // concorrencia (ja provado por teste real de concorrencia).
         await Promise.all(
             items.map(async (item) => {
-                const product = productsById.get(item.productId);
-                if (product) {
-                    await this.productRepo.update(product.id, { stock: product.stock - item.quantity });
+                const decremented = await this.productRepo.decrementFieldIfSufficient(item.productId, "stock", item.quantity);
+                if (!decremented) {
+                    const product = productsById.get(item.productId);
+                    throw new BusinessRuleError(`Estoque insuficiente para o produto: ${product?.name ?? item.productName}`);
                 }
             })
         );
