@@ -21,6 +21,10 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("POST", "/auth/logout", ["authenticated-read"]);
         });
 
+        it("POST /auth/refresh -> authenticated-read", () => {
+            expectTierIds("POST", "/auth/refresh", ["authenticated-read"]);
+        });
+
         it("GET /auth/me -> authenticated-read", () => {
             expectTierIds("GET", "/auth/me", ["authenticated-read"]);
         });

@@ -216,6 +216,7 @@ describe("UserAuthRouter — logout revoga a sessão de verdade", () => {
         const logoutRes = new FakeResponse();
         await logoutHandler(logoutReq, logoutRes as unknown as IResponse, () => {});
         expect(logoutRes.statusCode).toBe(200);
+        expect(logoutRes.clearedCookies).toEqual(expect.arrayContaining(["tokenUser", "refreshTokenUser"]));
 
         const secondReq = buildReq(token);
         const secondRes = new FakeResponse();
@@ -367,6 +368,26 @@ describe("UserAuthRouter — GET /auth/google/callback", () => {
         );
     });
 
+    it("no sucesso, também define o cookie de refresh token (refreshTokenUser), httpOnly e com validade de 2 dias", async () => {
+        kit.oauthProvider.authorizeNextExchangeWithEmail("cliente3@teste.com");
+        const handler = findCallbackHandler();
+        const req = buildReq(undefined, {
+            query: { code: "codigo-valido", state: "state-certo" },
+            cookies: {
+                oauthState: "state-certo",
+                oauthRedirectUri: "https://x/auth/google/callback",
+                oauthOrigin: "loja",
+            },
+        });
+        const res = new FakeResponse();
+
+        await handler(req, res as unknown as IResponse, () => {});
+
+        expect(res.cookiesSet.refreshTokenUser).toBeDefined();
+        expect(res.cookiesSet.refreshTokenUser.options?.httpOnly).toBe(true);
+        expect(res.cookiesSet.refreshTokenUser.options?.maxAge).toBe(2 * 24 * 60 * 60 * 1000);
+    });
+
     it("essa rota é pública: seus handlers não incluem requireSession nem requireAdmin", () => {
         const route = kit.server.registeredRoutes.find(
             (r) => r.method === "get" && r.path === "/auth/google/callback"
@@ -374,5 +395,100 @@ describe("UserAuthRouter — GET /auth/google/callback", () => {
 
         expect(route.handlers).not.toContain(kit.authRouter.requireSession);
         expect(route.handlers).not.toContain(kit.authRouter.requireAdmin);
+    });
+});
+
+describe("UserAuthRouter — POST /auth/refresh (renova o access token a partir do refresh token)", () => {
+    let kit: ReturnType<typeof buildAuthTestKit>;
+
+    const findRefreshHandler = () =>
+        kit.server.registeredRoutes.find((r) => r.method === "post" && r.path === "/auth/refresh")!.handlers[0];
+
+    beforeEach(() => {
+        kit = buildAuthTestKit();
+    });
+
+    it("essa rota é pública: seus handlers não incluem requireSession nem requireAdmin (funciona com o access token já expirado)", () => {
+        const route = kit.server.registeredRoutes.find((r) => r.method === "post" && r.path === "/auth/refresh")!;
+
+        expect(route.handlers).not.toContain(kit.authRouter.requireSession);
+        expect(route.handlers).not.toContain(kit.authRouter.requireAdmin);
+    });
+
+    it("recusa com 401 quando não há cookie de refresh token", async () => {
+        const handler = findRefreshHandler();
+        const req = buildReq(undefined, { cookies: {} });
+        const res = new FakeResponse();
+
+        await handler(req, res as unknown as IResponse, () => {});
+
+        expect(res.statusCode).toBe(401);
+        expect((res.jsonBody as any).error).toBe("Sessão ausente.");
+    });
+
+    it("recusa com 401 quando o refresh token é inválido/expirado", async () => {
+        kit.tokenManager.failNextVerifyWith(new Error("jwt malformed"));
+        const handler = findRefreshHandler();
+        const req = buildReq(undefined, { cookies: { refreshTokenUser: "refresh-invalido" } });
+        const res = new FakeResponse();
+
+        await handler(req, res as unknown as IResponse, () => {});
+
+        expect(res.statusCode).toBe(401);
+    });
+
+    it("com refresh token válido, responde 200 e define um novo cookie tokenUser", async () => {
+        const user = await kit.createUser(UserRole.CUSTOMER);
+        const refreshToken = kit.refreshTokenFor(user);
+        const handler = findRefreshHandler();
+        const req = buildReq(undefined, { cookies: { refreshTokenUser: refreshToken } });
+        const res = new FakeResponse();
+
+        await handler(req, res as unknown as IResponse, () => {});
+
+        expect(res.statusCode).toBe(200);
+        expect((res.jsonBody as any).refreshed).toBe(true);
+        expect(res.cookiesSet.tokenUser).toBeDefined();
+        expect(res.cookiesSet.tokenUser.options?.httpOnly).toBe(true);
+    });
+
+    it("recusa com 401 um refresh token já revogado (depois de logout)", async () => {
+        const user = await kit.createUser(UserRole.CUSTOMER);
+        const refreshToken = kit.refreshTokenFor(user);
+        await kit.serviceAuthToken.revoke(refreshToken);
+        const handler = findRefreshHandler();
+        const req = buildReq(undefined, { cookies: { refreshTokenUser: refreshToken } });
+        const res = new FakeResponse();
+
+        await handler(req, res as unknown as IResponse, () => {});
+
+        expect(res.statusCode).toBe(401);
+        expect((res.jsonBody as any).error).toBe("Token revogado.");
+    });
+
+    it("o logout revoga o refresh token: depois de deslogar, o mesmo refresh token deixa de renovar a sessão", async () => {
+        const user = await kit.createUser(UserRole.CUSTOMER);
+        const token = kit.tokenFor(user);
+        const refreshToken = kit.refreshTokenFor(user);
+        const logoutReq = buildReq(token, { cookies: { tokenUser: token, refreshTokenUser: refreshToken } }) as IRequest<
+            any,
+            any,
+            any,
+            SessionInjection
+        >;
+        const sessionRes = new FakeResponse();
+        await kit.authRouter.requireSession(logoutReq, sessionRes as unknown as IResponse, () => {});
+
+        const logoutRoute = kit.server.registeredRoutes.find((r) => r.method === "post" && r.path === "/auth/logout")!;
+        const logoutHandler = logoutRoute.handlers[logoutRoute.handlers.length - 1];
+        await logoutHandler(logoutReq, new FakeResponse() as unknown as IResponse, () => {});
+
+        const refreshHandler = findRefreshHandler();
+        const refreshReq = buildReq(undefined, { cookies: { refreshTokenUser: refreshToken } });
+        const refreshRes = new FakeResponse();
+        await refreshHandler(refreshReq, refreshRes as unknown as IResponse, () => {});
+
+        expect(refreshRes.statusCode).toBe(401);
+        expect((refreshRes.jsonBody as any).error).toBe("Token revogado.");
     });
 });

@@ -33,8 +33,6 @@ private buildSignOptions(baseExpiresIn: string | number, options?: TokenGenerati
     ) as SignOptions;
 }
     public generateToken(payload: object, options?: TokenGenerationOptions): string {
-        console.log(payload, this.secrets.jwtSecret, this.buildSignOptions(this.secrets.accessTokenExpiresIn, options));
-        
         return jwt.sign(payload, this.secrets.jwtSecret, this.buildSignOptions(this.secrets.accessTokenExpiresIn, options));
     }
     public generateRefreshToken(payload: object, options?: TokenGenerationOptions): string {

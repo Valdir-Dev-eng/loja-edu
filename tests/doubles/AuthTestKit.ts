@@ -2,6 +2,7 @@ import { AuthenticateWithGoogle } from "../../src/app/users/useCase/Authenticate
 import { CompleteOnboarding } from "../../src/app/users/useCase/CompleteOnboarding";
 import { GetAuthenticatedUser } from "../../src/app/users/useCase/GetAuthenticatedUser";
 import { LogoutUser } from "../../src/app/users/useCase/LogoutUser";
+import { RefreshSession } from "../../src/app/users/useCase/RefreshSession";
 import { CachePort } from "../../src/domain/database/CachePort";
 import { Address } from "../../src/domain/entites/Address";
 import { User, UserRole } from "../../src/domain/entites/User";
@@ -39,8 +40,15 @@ export function buildAuthTestKit() {
     const oauthProvider = new FakeOAuthProviderPort();
     const authenticateWithGoogle = new AuthenticateWithGoogle(oauthProvider, userRepo, createIdAdapter, serviceAuthToken);
     const completeOnboarding = new CompleteOnboarding(userRepo, addressRepo, cache, createIdAdapter);
+    const refreshSession = new RefreshSession(serviceAuthToken, userRepo);
 
-    const controller = new UserAuthController(authenticateWithGoogle, completeOnboarding, logoutUser, getAuthenticatedUser);
+    const controller = new UserAuthController(
+        authenticateWithGoogle,
+        completeOnboarding,
+        logoutUser,
+        getAuthenticatedUser,
+        refreshSession
+    );
     const server = new FakeServerPort();
     const authRouter = new UserAuthRouter(server, controller, oauthProvider);
 
@@ -65,6 +73,12 @@ export function buildAuthTestKit() {
         return `token-${user.id}`;
     };
 
+    /** Mints a refresh token string that will decode to `user` the next time it is verified. */
+    const refreshTokenFor = (user: User): string => {
+        tokenManager.setNextVerifiedPayload({ id: user.id });
+        return `refresh-token-${user.id}`;
+    };
+
     return {
         server,
         authRouter,
@@ -76,6 +90,7 @@ export function buildAuthTestKit() {
         serviceAuthToken,
         createUser,
         tokenFor,
+        refreshTokenFor,
     };
 }
 

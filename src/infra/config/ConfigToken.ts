@@ -17,7 +17,7 @@ export class ConfigToken {
             jwtRefreshSecret: ConfigEnv.getVariable("JWT_REFRESH_SECRET"),
             jwtTimeSetSecret: ConfigEnv.getVariable("JWT_TIME_SET_SECRET"),
             accessTokenExpiresIn: "15m",
-            refreshTokenExpiresIn: "7d",
+            refreshTokenExpiresIn: "2d",
         }
     }
 }

@@ -18,7 +18,27 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// O access token (tokenUser) dura só 15min; o refresh token (refreshTokenUser,
+// httpOnly) dura 2 dias. Como o front nunca enxerga o valor de nenhum cookie
+// httpOnly, a única forma de saber se a sessão ainda existe é tentar — por
+// isso, todo 401 aciona uma tentativa de /auth/refresh antes de desistir.
+// Concorrente: várias chamadas 401 ao mesmo tempo compartilham a mesma
+// tentativa de refresh em vez de disparar uma por request.
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefreshSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
+async function request<T>(path: string, init?: RequestInit, allowRefreshRetry = true): Promise<T> {
   const response = await fetch(`/api${path}`, {
     credentials: "include",
     headers: {
@@ -27,6 +47,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
     ...init,
   });
+
+  if (response.status === 401 && allowRefreshRetry && path !== "/auth/refresh") {
+    const refreshed = await tryRefreshSession();
+    if (refreshed) {
+      return request<T>(path, init, false);
+    }
+  }
 
   if (response.status === 204) {
     return undefined as T;

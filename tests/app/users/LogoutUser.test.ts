@@ -35,4 +35,18 @@ describe("LogoutUser", () => {
         await expect(context.useCase.execute({ token: "" })).rejects.toThrow(UnauthorizedError);
         await expect(context.useCase.execute({ token: "" })).rejects.toThrow("Sessão inválida.");
     });
+
+    it("revoga também o refresh token quando ele é informado", async () => {
+        await context.useCase.execute({ token: "token-valido", refreshToken: "refresh-valido" });
+
+        expect(context.cache.has("blacklist:token-valido")).toBe(true);
+        expect(context.cache.has("blacklist:refresh-valido")).toBe(true);
+    });
+
+    it("não tenta revogar refresh token quando ele não foi informado (compatível com sessão sem refresh)", async () => {
+        await context.useCase.execute({ token: "token-valido" });
+
+        expect(context.cache.has("blacklist:token-valido")).toBe(true);
+        expect(context.cache.has("blacklist:undefined")).toBe(false);
+    });
 });

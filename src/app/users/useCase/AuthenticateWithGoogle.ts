@@ -19,7 +19,8 @@ export class AuthenticateWithGoogle {
         const verifiedEmail = await this.oauthProvider.exchangeCodeForVerifiedEmail(input.code, input.redirectUri);
         const user = await this.findOrCreateUser(verifiedEmail);
         const token = this.serviceAuthToken.generateToken({ id: user.id });
-        return { token, onboardingPending: !user.onboardingCompleted };
+        const refreshToken = this.serviceAuthToken.generateRefreshToken({ id: user.id });
+        return { token, refreshToken, onboardingPending: !user.onboardingCompleted };
     }
 
     private async findOrCreateUser(verifiedEmail: string): Promise<User> {

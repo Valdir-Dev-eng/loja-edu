@@ -38,6 +38,8 @@ describe("AuthenticateWithGoogle", () => {
         const output = await context.useCase.execute({ code: "valid-code", redirectUri: "https://example.test/auth/google/callback" });
 
         expect(output.token).toBeTruthy();
+        expect(output.refreshToken).toBeTruthy();
+        expect(output.refreshToken).not.toBe(output.token);
         expect(output.onboardingPending).toBe(true);
         const savedUsers = await context.userRepository.findAll();
         expect(savedUsers).toHaveLength(1);

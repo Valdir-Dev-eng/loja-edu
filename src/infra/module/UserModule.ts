@@ -11,6 +11,7 @@ import { AuthenticateWithGoogle } from "../../app/users/useCase/AuthenticateWith
 import { CompleteOnboarding } from "../../app/users/useCase/CompleteOnboarding";
 import { GetAuthenticatedUser } from "../../app/users/useCase/GetAuthenticatedUser";
 import { LogoutUser } from "../../app/users/useCase/LogoutUser";
+import { RefreshSession } from "../../app/users/useCase/RefreshSession";
 import { AddressController } from "../controller/AddressController";
 import { UserAuthController } from "../controller/UserAuthController";
 import { DependencyInjection } from "../pattern/DI";
@@ -42,7 +43,8 @@ export class UserModule {
             new AuthenticateWithGoogle(oauthProvider, userRepository, createIdAdapter, serviceAuthToken),
             new CompleteOnboarding(userRepository, addressRepository, cache, createIdAdapter),
             new LogoutUser(serviceAuthToken),
-            new GetAuthenticatedUser(serviceAuthToken, userRepository, cache)
+            new GetAuthenticatedUser(serviceAuthToken, userRepository, cache),
+            new RefreshSession(serviceAuthToken, userRepository)
         );
 
         const addressController = new AddressController(

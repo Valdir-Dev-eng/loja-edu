@@ -54,6 +54,7 @@ const ROUTE_RULES: RouteRateLimitRule[] = [
     { routeId: "auth-google-redirect", method: "GET", pathPattern: "/auth/google", tiers: [OAUTH] },
     { routeId: "auth-google-callback", method: "GET", pathPattern: "/auth/google/callback", tiers: [OAUTH] },
     { routeId: "auth-logout", method: "POST", pathPattern: "/auth/logout", tiers: [AUTHENTICATED_READ] },
+    { routeId: "auth-refresh", method: "POST", pathPattern: "/auth/refresh", tiers: [AUTHENTICATED_READ] },
     { routeId: "auth-me", method: "GET", pathPattern: "/auth/me", tiers: [AUTHENTICATED_READ] },
     { routeId: "auth-onboarding", method: "POST", pathPattern: "/auth/onboarding", tiers: [GENERIC_WRITE] },
     { routeId: "address-list", method: "GET", pathPattern: "/addresses/my", tiers: [AUTHENTICATED_READ] },

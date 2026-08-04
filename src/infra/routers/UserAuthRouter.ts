@@ -18,6 +18,8 @@ const OAUTH_STATE_COOKIE = "oauthState";
 const OAUTH_REDIRECT_URI_COOKIE = "oauthRedirectUri";
 const OAUTH_ORIGIN_COOKIE = "oauthOrigin";
 const SESSION_COOKIE = "tokenUser";
+const REFRESH_TOKEN_COOKIE = "refreshTokenUser";
+const REFRESH_TOKEN_MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000;
 const HARNESS_ROUTE_PREFIX = "/app";
 const GOOGLE_CALLBACK_PATH = "/auth/google/callback";
 
@@ -36,6 +38,7 @@ export class UserAuthRouter {
     private boot() {
         this.server.addRouter("get", "/auth/google", this.redirectToGoogle);
         this.server.addRouter("get", "/auth/google/callback", this.handleGoogleCallback);
+        this.server.addRouter("post", "/auth/refresh", this.refresh);
         this.server.addRouter("post", "/auth/logout", this.requireSession, this.logout);
         this.server.addRouter("get", "/auth/me", this.requireSession, this.me);
     }
@@ -46,6 +49,15 @@ export class UserAuthRouter {
             secure: ConfigDomain.secure,
             sameSite: "lax",
             maxAge: 3600000,
+        });
+    }
+
+    private setRefreshCookie(res: IResponse, refreshToken: string) {
+        res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
+            httpOnly: true,
+            secure: ConfigDomain.secure,
+            sameSite: "lax",
+            maxAge: REFRESH_TOKEN_MAX_AGE_MS,
         });
     }
 
@@ -101,6 +113,7 @@ export class UserAuthRouter {
             res.clearCookie(OAUTH_REDIRECT_URI_COOKIE);
             res.clearCookie(OAUTH_ORIGIN_COOKIE);
             this.setSessionCookie(res, result.token);
+            this.setRefreshCookie(res, result.refreshToken);
             // "loja" e o novo frontend Next.js, que em dev vive numa origem
             // separada do Express — precisa de URL absoluta, nao caminho
             // relativo (senao o navegador fica na origem do Express).
@@ -109,6 +122,18 @@ export class UserAuthRouter {
                     ? `${ConfigDomain.getLojaOrigin()}/?onboardingPending=${result.onboardingPending}`
                     : `${HARNESS_ROUTE_PREFIX}/?onboardingPending=${result.onboardingPending}`;
             return res.redirect(target);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            return res.status(status).json(body);
+        }
+    };
+
+    private refresh: middleWare = async (req, res) => {
+        try {
+            const refreshToken = req.cookies[REFRESH_TOKEN_COOKIE];
+            const { accessToken } = await this.controller.refreshSession(refreshToken);
+            this.setSessionCookie(res, accessToken);
+            return res.status(200).json({ refreshed: true });
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);
             return res.status(status).json(body);
@@ -162,8 +187,10 @@ export class UserAuthRouter {
     private logout: middleWare = async (req, res) => {
         try {
             const { sessionToken } = req as IRequest<any, any, any, SessionInjection>;
-            await this.controller.logout(sessionToken);
+            const refreshToken = req.cookies[REFRESH_TOKEN_COOKIE];
+            await this.controller.logout(sessionToken, refreshToken);
             res.clearCookie(SESSION_COOKIE);
+            res.clearCookie(REFRESH_TOKEN_COOKIE);
             return res.status(200).json({ message: "Sessão encerrada com sucesso." });
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);
