@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
 
+  // Permite que o tunel ngrok usado pra testar o login com Google em dev
+  // acesse o servidor de desenvolvimento (o Next bloqueia origem externa por
+  // padrao). Atualizar aqui sempre que a URL do tunel mudar.
+  allowedDevOrigins: ["devoted-robin-striking.ngrok-free.app"],
+
   // Partial Prerendering (static shell + streaming dynamic parts) — o motor
   // que faz a pagina chegar pronta no HTML sem esperar a rede no cliente.
   cacheComponents: true,
@@ -44,6 +49,21 @@ const nextConfig: NextConfig = {
         // Express) cair de volta aqui, nao no processo antigo do storefront.
         source: "/auth/:path*",
         destination: `${API_ORIGIN}/auth/:path*`,
+      },
+      {
+        // Webhook do Mercado Pago: o proprio Mercado Pago faz o POST direto
+        // nessa URL publica (sem passar pelo navegador). Se o tunel (ngrok)
+        // apontar pro Next em vez do Express, precisa desse rewrite pra nao
+        // cair em 404 do Next e a confirmacao de pagamento nunca chegar.
+        source: "/webhooks/:path*",
+        destination: `${API_ORIGIN}/webhooks/:path*`,
+      },
+      {
+        // Callback do Melhor Envio (OAuth do frete) — mesmo motivo do
+        // /auth/*: precisa ficar na mesma origem de quem iniciou o fluxo
+        // pro cookie de estado (melhorEnvioOauthState) sobreviver.
+        source: "/callback/:path*",
+        destination: `${API_ORIGIN}/callback/:path*`,
       },
     ];
   },
