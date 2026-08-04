@@ -34,6 +34,7 @@ import { RateLimitRouteRules } from "../rateLimit/RateLimitRouteRules";
 import { ShippingGatewayPort } from "../../domain/shipping/ShippingGatewayPort";
 import { MelhorEnvioAdapter } from "../shipping/MelhorEnvioAdapter";
 import { ShippingModule } from "./ShippingModule";
+import { CartModule } from "./CartModule";
 
 
 export class AppModule {
@@ -68,6 +69,7 @@ export class AppModule {
         new ProductModule(this.di, userModule.authRouter)
         new CategoryModule(this.di, userModule.authRouter)
         new ProductImageModule(this.di, userModule.authRouter)
+        new CartModule(this.di, userModule.authRouter)
         const orderModule = new OrderModule(this.di, userModule.authRouter)
         new ShippingModule(this.di, userModule.authRouter)
         new AdminModule(this.di, userModule.authRouter, orderModule.controller)

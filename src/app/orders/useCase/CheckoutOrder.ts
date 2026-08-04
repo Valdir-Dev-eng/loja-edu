@@ -1,3 +1,4 @@
+import { ClearCart } from "../../cart/useCase/ClearCart";
 import { Address } from "../../../domain/entites/Address";
 import { Order, OrderItem } from "../../../domain/entites/Order";
 import { Product } from "../../../domain/entites/Product";
@@ -20,7 +21,8 @@ export class CheckoutOrder {
         private userRepo: RepositoryPort<User>,
         private paymentGateway: PaymentGatewayPort,
         private shippingGateway: ShippingGatewayPort,
-        private createId: CreateId
+        private createId: CreateId,
+        private clearCart: ClearCart
     ) {}
 
     async execute(input: CheckoutOrderInput): Promise<CheckoutOrderOutput> {
@@ -49,6 +51,7 @@ export class CheckoutOrder {
         order.attachPayment(payment.externalPaymentId);
         await this.orderRepo.save(order);
         await this.decrementStock(items, productsById);
+        await this.clearCart.execute(user.id);
 
         return {
             orderId: order.id,

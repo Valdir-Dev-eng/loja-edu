@@ -3,8 +3,10 @@ import { GetMyOrders } from "../../app/orders/useCase/GetMyOrders";
 import { GetOrderPaymentStatus } from "../../app/orders/useCase/GetOrderPaymentStatus";
 import { ListOrdersForAdmin } from "../../app/orders/useCase/ListOrdersForAdmin";
 import { ProcessPaymentWebhook } from "../../app/orders/useCase/ProcessPaymentWebhook";
+import { ClearCart } from "../../app/cart/useCase/ClearCart";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { Address } from "../../domain/entites/Address";
+import { CartItem } from "../../domain/entites/CartItem";
 import { Order } from "../../domain/entites/Order";
 import { Product } from "../../domain/entites/Product";
 import { User } from "../../domain/entites/User";
@@ -14,6 +16,7 @@ import { RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { OrderController } from "../controller/OrderController";
 import { DependencyInjection } from "../pattern/DI";
 import { AddressRepository } from "../repository/AddressRepository";
+import { CartItemRepository } from "../repository/CartItemRepository";
 import { OrderRepository } from "../repository/OrderRepository";
 import { ProductRepository } from "../repository/ProductRepository";
 import { UserRepository } from "../repository/UserRepository";
@@ -37,6 +40,7 @@ export class OrderModule {
         const productRepository: RepositoryPort<Product> = new ProductRepository(db);
         const addressRepository: RepositoryPort<Address> = new AddressRepository(db);
         const userRepository: RepositoryPort<User> = new UserRepository(db);
+        const cartItemRepository: RepositoryPort<CartItem> = new CartItemRepository(db);
 
         const processPaymentWebhook = new ProcessPaymentWebhook(orderRepository, productRepository, paymentGateway);
 
@@ -48,7 +52,8 @@ export class OrderModule {
                 userRepository,
                 paymentGateway,
                 shippingGateway,
-                createIdAdapter
+                createIdAdapter,
+                new ClearCart(cartItemRepository)
             ),
             processPaymentWebhook,
             new GetMyOrders(orderRepository),

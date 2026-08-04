@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { CheckoutOrder } from "../../../src/app/orders/useCase/CheckoutOrder";
+import { ClearCart } from "../../../src/app/cart/useCase/ClearCart";
 import { Address } from "../../../src/domain/entites/Address";
+import { CartItem } from "../../../src/domain/entites/CartItem";
 import { Order, OrderStatus } from "../../../src/domain/entites/Order";
 import { Product } from "../../../src/domain/entites/Product";
 import { User } from "../../../src/domain/entites/User";
@@ -28,13 +30,23 @@ const buildUseCase = () => {
     const productRepo = new InMemoryRepository<Product>();
     const addressRepo = new InMemoryRepository<Address>();
     const userRepo = new InMemoryRepository<User>();
+    const cartItemRepo = new InMemoryRepository<CartItem>();
     const paymentGateway = new FakePaymentGatewayPort();
     const shippingGateway = new FakeShippingGatewayPort();
     shippingGateway.queueQuoteOptions([
         { serviceId: DEFAULT_SHIPPING_SERVICE_ID, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
     ]);
-    const useCase = new CheckoutOrder(orderRepo, productRepo, addressRepo, userRepo, paymentGateway, shippingGateway, createId);
-    return { useCase, orderRepo, productRepo, addressRepo, userRepo, paymentGateway, shippingGateway };
+    const useCase = new CheckoutOrder(
+        orderRepo,
+        productRepo,
+        addressRepo,
+        userRepo,
+        paymentGateway,
+        shippingGateway,
+        createId,
+        new ClearCart(cartItemRepo)
+    );
+    return { useCase, orderRepo, productRepo, addressRepo, userRepo, cartItemRepo, paymentGateway, shippingGateway };
 };
 
 const buildUser = async (context: ReturnType<typeof buildUseCase>) => {
@@ -150,6 +162,18 @@ describe("CheckoutOrder", () => {
         expect(persistedProduct?.stock).toBe(7);
     });
 
+    it("limpa o carrinho do usuário depois de um checkout bem-sucedido", async () => {
+        const { user, address } = await buildUser(context);
+        const product = await buildProduct(context, "Dipirona", 1990, 10);
+        const cartItem = CartItem.build(createId, user.id, product.id, 3);
+        await context.cartItemRepo.save(cartItem);
+
+        await context.useCase.execute(buildCheckoutInput(user.id, address.id, [{ productId: product.id, quantity: 1 }]));
+
+        const remainingCartItems = await context.cartItemRepo.findMany({ userId: user.id } as never);
+        expect(remainingCartItems).toHaveLength(0);
+    });
+
     it("salva o pedido com o id de pagamento vinculado", async () => {
         const { user, address } = await buildUser(context);
         const product = await buildProduct(context, "Dipirona", 1990, 10);
@@ -235,7 +259,26 @@ describe("CheckoutOrder", () => {
         shippingGateway.queueQuoteOptions([
             { serviceId: DEFAULT_SHIPPING_SERVICE_ID, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
         ]);
-        const raceContext = { useCase: new CheckoutOrder(orderRepo, productRepo, addressRepo, userRepo, paymentGateway, shippingGateway, createId), orderRepo, productRepo, addressRepo, userRepo, paymentGateway, shippingGateway };
+        const cartItemRepo = new InMemoryRepository<CartItem>();
+        const raceContext = {
+            useCase: new CheckoutOrder(
+                orderRepo,
+                productRepo,
+                addressRepo,
+                userRepo,
+                paymentGateway,
+                shippingGateway,
+                createId,
+                new ClearCart(cartItemRepo)
+            ),
+            orderRepo,
+            productRepo,
+            addressRepo,
+            userRepo,
+            cartItemRepo,
+            paymentGateway,
+            shippingGateway,
+        };
         const { user, address } = await buildUser(raceContext);
         const product = await buildProduct(raceContext, "Dipirona", 1990, 10);
 
