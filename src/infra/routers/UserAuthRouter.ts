@@ -8,11 +8,14 @@ import { ConfigDomain } from "../config/ConfigDomain";
 import { HttpErrorMapper } from "../shared/errors/HttpErrorMapper";
 import { IRequest, IResponse, ServerPort, middleWare } from "../server/ServerPort";
 import { createIdAdapter } from "../utils/createId";
+import { CART_TOKEN_COOKIE } from "./CartRouter";
 
 export interface SessionInjection {
     authenticatedUser: UserOutput;
     sessionToken: string;
 }
+
+export type CartAttachHandler = (cartIdFromCookie: string | null, userId: string) => Promise<void>;
 
 const OAUTH_STATE_COOKIE = "oauthState";
 const OAUTH_REDIRECT_URI_COOKIE = "oauthRedirectUri";
@@ -27,12 +30,21 @@ type OAuthOrigin = "loja" | "admin";
 const OAUTH_ORIGIN_ALLOWLIST: OAuthOrigin[] = ["loja", "admin"];
 
 export class UserAuthRouter {
+    // Setado depois da construcao (CartModule ainda nao existe quando o
+    // UserModule monta este router) — nunca chamado a partir de um endpoint
+    // publico, so internamente logo apos autenticar com sucesso.
+    private cartAttachHandler: CartAttachHandler | null = null;
+
     constructor(
         private server: ServerPort,
         private controller: UserAuthController,
         private oauthProvider: OAuthProviderPort
     ) {
         this.boot();
+    }
+
+    public setCartAttachHandler(handler: CartAttachHandler): void {
+        this.cartAttachHandler = handler;
     }
 
     private boot() {
@@ -114,6 +126,12 @@ export class UserAuthRouter {
             res.clearCookie(OAUTH_ORIGIN_COOKIE);
             this.setSessionCookie(res, result.token);
             this.setRefreshCookie(res, result.refreshToken);
+            if (this.cartAttachHandler) {
+                const cartIdFromCookie = (req.cookies[CART_TOKEN_COOKIE] as string | undefined) ?? null;
+                await this.cartAttachHandler(cartIdFromCookie, result.userId).catch((attachError) => {
+                    console.error("Falha ao anexar carrinho anonimo ao usuario logado:", attachError);
+                });
+            }
             // "loja" e o novo frontend Next.js, que em dev vive numa origem
             // separada do Express — precisa de URL absoluta, nao caminho
             // relativo (senao o navegador fica na origem do Express).
@@ -151,6 +169,26 @@ export class UserAuthRouter {
             const { status, body } = HttpErrorMapper.toHttp(error);
             res.status(status).json(body);
         }
+    };
+
+    // Pras rotas de carrinho: tenta resolver o usuario se houver cookie de
+    // sessao valido, mas NUNCA bloqueia visitante sem sessao (carrinho
+    // anonimo precisa funcionar). Sessao invalida/expirada tambem so vira
+    // "visitante" — nunca 401 aqui, diferente de requireSession.
+    public optionalSession: middleWare = async (req, res, next) => {
+        const token = req.cookies[SESSION_COOKIE];
+        if (!token) {
+            next();
+            return;
+        }
+        try {
+            const authenticatedUser = await this.controller.resolveAuthenticatedUser(token);
+            (req as IRequest<any, any, any, SessionInjection>).authenticatedUser = authenticatedUser;
+            (req as IRequest<any, any, any, SessionInjection>).sessionToken = token;
+        } catch {
+            // token invalido/expirado — segue como visitante, nao bloqueia.
+        }
+        next();
     };
 
     public requireAdmin: middleWare = async (req, res, next) => {

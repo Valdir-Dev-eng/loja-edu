@@ -1,12 +1,16 @@
-import { AddCartItemBody, CartValidator, MergeCartBody, UpdateCartItemBody } from "../validators/CartValidator";
+import { AddCartItemBody, CartValidator, UpdateCartItemBody } from "../validators/CartValidator";
 import { CartController } from "../controller/CartController";
+import { ConfigDomain } from "../config/ConfigDomain";
 import { HttpErrorMapper } from "../shared/errors/HttpErrorMapper";
 import { IRequest, middleWare, ServerPort } from "../server/ServerPort";
 import { SessionInjection, UserAuthRouter } from "./UserAuthRouter";
 
+export const CART_TOKEN_COOKIE = "cartId";
+const CART_TOKEN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
 type AddCartItemInjection = { cartAddInput: AddCartItemBody };
 type UpdateCartItemInjection = { cartUpdateInput: UpdateCartItemBody };
-type MergeCartInjection = { cartMergeInput: MergeCartBody };
+type CartInjection = { cartId: string | null };
 
 export class CartRouter {
     constructor(
@@ -19,30 +23,56 @@ export class CartRouter {
     }
 
     private boot() {
-        this.server.addRouter("get", "/cart/my", this.authRouter.requireSession, this.list);
+        this.server.addRouter("get", "/cart", this.authRouter.optionalSession, this.resolveCart, this.list);
         this.server.addRouter(
             "post",
             "/cart/items",
-            this.authRouter.requireSession,
+            this.authRouter.optionalSession,
+            this.resolveCart,
             this.validateAdd,
             this.add
         );
         this.server.addRouter(
             "put",
             "/cart/items/:productId",
-            this.authRouter.requireSession,
+            this.authRouter.optionalSession,
+            this.resolveCart,
             this.validateUpdateQuantity,
             this.updateQuantity
         );
-        this.server.addRouter("delete", "/cart/items/:productId", this.authRouter.requireSession, this.remove);
         this.server.addRouter(
-            "post",
-            "/cart/merge",
-            this.authRouter.requireSession,
-            this.validateMerge,
-            this.merge
+            "delete",
+            "/cart/items/:productId",
+            this.authRouter.optionalSession,
+            this.resolveCart,
+            this.remove
         );
     }
+
+    // Sempre le o id do carrinho do cookie da propria requisicao — nunca de
+    // body/query, pra ninguem conseguir forjar "atua no carrinho X" so
+    // mandando esse id num JSON. Cria carrinho novo (anonimo ou ja do
+    // usuario, se logado) quando nao existe um valido ainda.
+    private resolveCart: middleWare = async (req, res, next) => {
+        try {
+            const cartIdFromCookie = (req.cookies[CART_TOKEN_COOKIE] as string | undefined) ?? null;
+            const { authenticatedUser } = req as IRequest<any, any, any, Partial<SessionInjection>>;
+            const cart = await this.controller.resolve(cartIdFromCookie, authenticatedUser?.id ?? null, true);
+            if (cart && cart.id !== cartIdFromCookie) {
+                res.cookie(CART_TOKEN_COOKIE, cart.id, {
+                    httpOnly: true,
+                    secure: ConfigDomain.secure,
+                    sameSite: "lax",
+                    maxAge: CART_TOKEN_MAX_AGE_MS,
+                });
+            }
+            (req as IRequest<any, any, any, CartInjection>).cartId = cart?.id ?? null;
+            next();
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
 
     private validateAdd: middleWare = async (req, res, next) => {
         try {
@@ -66,21 +96,10 @@ export class CartRouter {
         }
     };
 
-    private validateMerge: middleWare = async (req, res, next) => {
-        try {
-            const cartMergeInput = this.validator.validateMerge(req.body);
-            (req as IRequest<any, any, any, MergeCartInjection>).cartMergeInput = cartMergeInput;
-            next();
-        } catch (error) {
-            const { status, body } = HttpErrorMapper.toHttp(error);
-            res.status(status).json(body);
-        }
-    };
-
     private list: middleWare = async (req, res) => {
         try {
-            const { authenticatedUser } = req as IRequest<any, any, any, SessionInjection>;
-            const result = await this.controller.list(authenticatedUser.id);
+            const { cartId } = req as IRequest<any, any, any, CartInjection>;
+            const result = cartId ? await this.controller.list(cartId) : [];
             res.json(result);
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);
@@ -90,8 +109,8 @@ export class CartRouter {
 
     private add: middleWare = async (req, res) => {
         try {
-            const { authenticatedUser, cartAddInput } = req as IRequest<any, any, any, SessionInjection & AddCartItemInjection>;
-            const result = await this.controller.add(authenticatedUser.id, cartAddInput.productId, cartAddInput.quantity);
+            const { cartId, cartAddInput } = req as IRequest<any, any, any, CartInjection & AddCartItemInjection>;
+            const result = await this.controller.add(cartId as string, cartAddInput.productId, cartAddInput.quantity);
             res.status(201).json(result);
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);
@@ -101,14 +120,8 @@ export class CartRouter {
 
     private updateQuantity: middleWare = async (req, res) => {
         try {
-            const { authenticatedUser, cartUpdateInput } = req as IRequest<
-                any,
-                any,
-                any,
-                SessionInjection & UpdateCartItemInjection
-            >;
-            const { productId } = req.params;
-            const result = await this.controller.updateQuantity(authenticatedUser.id, productId, cartUpdateInput.quantity);
+            const { cartId, cartUpdateInput } = req as IRequest<any, any, any, CartInjection & UpdateCartItemInjection>;
+            const result = await this.controller.updateQuantity(cartId as string, req.params.productId, cartUpdateInput.quantity);
             if (!result) {
                 return res.status(204).send();
             }
@@ -121,21 +134,9 @@ export class CartRouter {
 
     private remove: middleWare = async (req, res) => {
         try {
-            const { authenticatedUser } = req as IRequest<any, any, any, SessionInjection>;
-            const { productId } = req.params;
-            await this.controller.remove(authenticatedUser.id, productId);
+            const { cartId } = req as IRequest<any, any, any, CartInjection>;
+            await this.controller.remove(cartId as string, req.params.productId);
             res.status(204).send();
-        } catch (error) {
-            const { status, body } = HttpErrorMapper.toHttp(error);
-            res.status(status).json(body);
-        }
-    };
-
-    private merge: middleWare = async (req, res) => {
-        try {
-            const { authenticatedUser, cartMergeInput } = req as IRequest<any, any, any, SessionInjection & MergeCartInjection>;
-            const result = await this.controller.merge(authenticatedUser.id, cartMergeInput.items);
-            res.status(200).json(result);
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);
             res.status(status).json(body);

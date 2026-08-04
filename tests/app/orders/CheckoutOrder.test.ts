@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { CheckoutOrder } from "../../../src/app/orders/useCase/CheckoutOrder";
 import { ClearCart } from "../../../src/app/cart/useCase/ClearCart";
 import { Address } from "../../../src/domain/entites/Address";
+import { Cart } from "../../../src/domain/entites/Cart";
 import { CartItem } from "../../../src/domain/entites/CartItem";
 import { Order, OrderStatus } from "../../../src/domain/entites/Order";
 import { Product } from "../../../src/domain/entites/Product";
@@ -30,6 +31,7 @@ const buildUseCase = () => {
     const productRepo = new InMemoryRepository<Product>();
     const addressRepo = new InMemoryRepository<Address>();
     const userRepo = new InMemoryRepository<User>();
+    const cartRepo = new InMemoryRepository<Cart>();
     const cartItemRepo = new InMemoryRepository<CartItem>();
     const paymentGateway = new FakePaymentGatewayPort();
     const shippingGateway = new FakeShippingGatewayPort();
@@ -44,9 +46,9 @@ const buildUseCase = () => {
         paymentGateway,
         shippingGateway,
         createId,
-        new ClearCart(cartItemRepo)
+        new ClearCart(cartRepo, cartItemRepo)
     );
-    return { useCase, orderRepo, productRepo, addressRepo, userRepo, cartItemRepo, paymentGateway, shippingGateway };
+    return { useCase, orderRepo, productRepo, addressRepo, userRepo, cartRepo, cartItemRepo, paymentGateway, shippingGateway };
 };
 
 const buildUser = async (context: ReturnType<typeof buildUseCase>) => {
@@ -165,12 +167,14 @@ describe("CheckoutOrder", () => {
     it("limpa o carrinho do usuário depois de um checkout bem-sucedido", async () => {
         const { user, address } = await buildUser(context);
         const product = await buildProduct(context, "Dipirona", 1990, 10);
-        const cartItem = CartItem.build(createId, user.id, product.id, 3);
-        await context.cartItemRepo.save(cartItem);
+        const cart = Cart.build(createId);
+        cart.attachUser(user.id);
+        await context.cartRepo.save(cart);
+        await context.cartItemRepo.save(CartItem.build(createId, cart.id, product.id, 3));
 
         await context.useCase.execute(buildCheckoutInput(user.id, address.id, [{ productId: product.id, quantity: 1 }]));
 
-        const remainingCartItems = await context.cartItemRepo.findMany({ userId: user.id } as never);
+        const remainingCartItems = await context.cartItemRepo.findMany({ cartId: cart.id } as never);
         expect(remainingCartItems).toHaveLength(0);
     });
 
@@ -259,6 +263,7 @@ describe("CheckoutOrder", () => {
         shippingGateway.queueQuoteOptions([
             { serviceId: DEFAULT_SHIPPING_SERVICE_ID, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
         ]);
+        const cartRepo = new InMemoryRepository<Cart>();
         const cartItemRepo = new InMemoryRepository<CartItem>();
         const raceContext = {
             useCase: new CheckoutOrder(
@@ -269,12 +274,13 @@ describe("CheckoutOrder", () => {
                 paymentGateway,
                 shippingGateway,
                 createId,
-                new ClearCart(cartItemRepo)
+                new ClearCart(cartRepo, cartItemRepo)
             ),
             orderRepo,
             productRepo,
             addressRepo,
             userRepo,
+            cartRepo,
             cartItemRepo,
             paymentGateway,
             shippingGateway,

@@ -6,6 +6,7 @@ import { ProcessPaymentWebhook } from "../../app/orders/useCase/ProcessPaymentWe
 import { ClearCart } from "../../app/cart/useCase/ClearCart";
 import { DataAccessPort } from "../../domain/database/DataAcess";
 import { Address } from "../../domain/entites/Address";
+import { Cart } from "../../domain/entites/Cart";
 import { CartItem } from "../../domain/entites/CartItem";
 import { Order } from "../../domain/entites/Order";
 import { Product } from "../../domain/entites/Product";
@@ -17,6 +18,7 @@ import { OrderController } from "../controller/OrderController";
 import { DependencyInjection } from "../pattern/DI";
 import { AddressRepository } from "../repository/AddressRepository";
 import { CartItemRepository } from "../repository/CartItemRepository";
+import { CartRepository } from "../repository/CartRepository";
 import { OrderRepository } from "../repository/OrderRepository";
 import { ProductRepository } from "../repository/ProductRepository";
 import { UserRepository } from "../repository/UserRepository";
@@ -40,6 +42,7 @@ export class OrderModule {
         const productRepository: RepositoryPort<Product> = new ProductRepository(db);
         const addressRepository: RepositoryPort<Address> = new AddressRepository(db);
         const userRepository: RepositoryPort<User> = new UserRepository(db);
+        const cartRepository: RepositoryPort<Cart> = new CartRepository(db);
         const cartItemRepository: RepositoryPort<CartItem> = new CartItemRepository(db);
 
         const processPaymentWebhook = new ProcessPaymentWebhook(orderRepository, productRepository, paymentGateway);
@@ -53,7 +56,7 @@ export class OrderModule {
                 paymentGateway,
                 shippingGateway,
                 createIdAdapter,
-                new ClearCart(cartItemRepository)
+                new ClearCart(cartRepository, cartItemRepository)
             ),
             processPaymentWebhook,
             new GetMyOrders(orderRepository),

@@ -12,7 +12,7 @@ export class UpdateCartItemQuantity {
     ) {}
 
     async execute(input: UpdateCartItemInput): Promise<CartItemOutput | null> {
-        const existing = await this.cartItemRepo.findBy({ userId: input.userId, productId: input.productId } as never);
+        const existing = await this.cartItemRepo.findBy({ cartId: input.cartId, productId: input.productId } as never);
         if (!existing) {
             throw new NotFoundError("Item não encontrado no carrinho.");
         }

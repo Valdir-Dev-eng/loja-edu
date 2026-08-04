@@ -33,6 +33,22 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("POST", "/auth/onboarding", ["generic-write"]);
         });
 
+        it("GET /cart -> authenticated-read (funciona anonimo tambem, mas o limite continua o mesmo)", () => {
+            expectTierIds("GET", "/cart", ["authenticated-read"]);
+        });
+
+        it("POST /cart/items -> generic-write", () => {
+            expectTierIds("POST", "/cart/items", ["generic-write"]);
+        });
+
+        it("PUT /cart/items/:productId -> generic-write", () => {
+            expectTierIds("PUT", "/cart/items/produto-123", ["generic-write"]);
+        });
+
+        it("DELETE /cart/items/:productId -> generic-write", () => {
+            expectTierIds("DELETE", "/cart/items/produto-123", ["generic-write"]);
+        });
+
         it("GET /addresses/my -> authenticated-read", () => {
             expectTierIds("GET", "/addresses/my", ["authenticated-read"]);
         });

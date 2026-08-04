@@ -21,8 +21,8 @@ describe("ListCart", () => {
         context = buildUseCase();
     });
 
-    it("devolve vazio quando o usuário não tem itens no carrinho", async () => {
-        const result = await context.useCase.execute("user-1");
+    it("devolve vazio quando o carrinho não tem itens", async () => {
+        const result = await context.useCase.execute("cart-1");
 
         expect(result).toEqual([]);
     });
@@ -30,10 +30,10 @@ describe("ListCart", () => {
     it("devolve os itens do carrinho já hidratados com dado atual do produto", async () => {
         const product = Product.build(createId, "Dipirona", 1990, 500, 10, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        const item = CartItem.build(createId, "user-1", product.id, 3);
+        const item = CartItem.build(createId, "cart-1", product.id, 3);
         await context.cartItemRepo.save(item);
 
-        const result = await context.useCase.execute("user-1");
+        const result = await context.useCase.execute("cart-1");
 
         expect(result).toEqual([
             {
@@ -47,20 +47,20 @@ describe("ListCart", () => {
         ]);
     });
 
-    it("nunca devolve item de outro usuário", async () => {
+    it("nunca devolve item de outro carrinho", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "outro-usuario", product.id, 1));
+        await context.cartItemRepo.save(CartItem.build(createId, "outro-carrinho", product.id, 1));
 
-        const result = await context.useCase.execute("user-1");
+        const result = await context.useCase.execute("cart-1");
 
         expect(result).toEqual([]);
     });
 
     it("omite item cujo produto não existe mais (removido do catálogo)", async () => {
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", "produto-removido", 1));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", "produto-removido", 1));
 
-        const result = await context.useCase.execute("user-1");
+        const result = await context.useCase.execute("cart-1");
 
         expect(result).toEqual([]);
     });

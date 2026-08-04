@@ -27,19 +27,19 @@ describe("AddCartItem", () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
 
-        const output = await context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 2 });
+        const output = await context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 2 });
 
         expect(output.quantity).toBe(2);
-        const saved = await context.cartItemRepo.findBy({ userId: "user-1", productId: product.id } as never);
+        const saved = await context.cartItemRepo.findBy({ cartId: "cart-1", productId: product.id } as never);
         expect(saved?.quantity).toBe(2);
     });
 
     it("soma à quantidade já existente quando o produto já está no carrinho", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", product.id, 3));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", product.id, 3));
 
-        const output = await context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 2 });
+        const output = await context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 2 });
 
         expect(output.quantity).toBe(5);
     });
@@ -47,9 +47,9 @@ describe("AddCartItem", () => {
     it("limita a quantidade adicionada ao estoque disponível", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 5, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", product.id, 4));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", product.id, 4));
 
-        const output = await context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 10 });
+        const output = await context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 10 });
 
         expect(output.quantity).toBe(5);
     });
@@ -57,19 +57,19 @@ describe("AddCartItem", () => {
     it("recusa adicionar quando já está no limite do estoque", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 3, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", product.id, 3));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", product.id, 3));
 
-        await expect(context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 1 })).rejects.toThrow(
+        await expect(context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 1 })).rejects.toThrow(
             BusinessRuleError
         );
-        await expect(context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 1 })).rejects.toThrow(
+        await expect(context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 1 })).rejects.toThrow(
             "Estoque insuficiente para adicionar mais unidades de: Dipirona"
         );
     });
 
     it("recusa adicionar produto inexistente", async () => {
         await expect(
-            context.useCase.execute({ userId: "user-1", productId: "produto-inexistente", quantity: 1 })
+            context.useCase.execute({ cartId: "cart-1", productId: "produto-inexistente", quantity: 1 })
         ).rejects.toThrow(NotFoundError);
     });
 
@@ -79,7 +79,20 @@ describe("AddCartItem", () => {
         await context.productRepo.save(product);
 
         await expect(
-            context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 1 })
+            context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 1 })
         ).rejects.toThrow(NotFoundError);
+    });
+
+    it("dois carrinhos diferentes não interferem um no outro", async () => {
+        const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
+        await context.productRepo.save(product);
+
+        await context.useCase.execute({ cartId: "cart-a", productId: product.id, quantity: 2 });
+        await context.useCase.execute({ cartId: "cart-b", productId: product.id, quantity: 1 });
+
+        const itemA = await context.cartItemRepo.findBy({ cartId: "cart-a", productId: product.id } as never);
+        const itemB = await context.cartItemRepo.findBy({ cartId: "cart-b", productId: product.id } as never);
+        expect(itemA?.quantity).toBe(2);
+        expect(itemB?.quantity).toBe(1);
     });
 });

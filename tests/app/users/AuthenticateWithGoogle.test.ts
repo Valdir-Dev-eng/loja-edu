@@ -45,6 +45,7 @@ describe("AuthenticateWithGoogle", () => {
         expect(savedUsers).toHaveLength(1);
         expect(savedUsers[0].email).toBe("joao@gmail.com");
         expect(savedUsers[0].username).toBe("joao");
+        expect(output.userId).toBe(savedUsers[0].id);
     });
 
     it("repassa o redirectUri recebido para a troca do código com o provedor OAuth", async () => {

@@ -1,5 +1,5 @@
 export interface AddCartItemInput {
-    userId: string;
+    cartId: string;
     productId: string;
     quantity: number;
 }

@@ -9,8 +9,8 @@ export class ListCart {
         private productRepo: RepositoryPort<Product>
     ) {}
 
-    async execute(userId: string): Promise<CartItemOutput[]> {
-        const cartItems = await this.cartItemRepo.findMany({ userId } as never);
+    async execute(cartId: string): Promise<CartItemOutput[]> {
+        const cartItems = await this.cartItemRepo.findMany({ cartId } as never);
         if (cartItems.length === 0) {
             return [];
         }

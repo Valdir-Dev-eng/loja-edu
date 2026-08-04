@@ -20,31 +20,31 @@ describe("RemoveCartItem", () => {
         context = buildUseCase();
     });
 
-    it("remove o item do carrinho do usuário", async () => {
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", "product-1", 2));
+    it("remove o item do carrinho", async () => {
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", "product-1", 2));
 
-        await context.useCase.execute({ userId: "user-1", productId: "product-1" });
+        await context.useCase.execute({ cartId: "cart-1", productId: "product-1" });
 
-        const remaining = await context.cartItemRepo.findBy({ userId: "user-1", productId: "product-1" } as never);
+        const remaining = await context.cartItemRepo.findBy({ cartId: "cart-1", productId: "product-1" } as never);
         expect(remaining).toBeNull();
     });
 
-    it("recusa remover item que não existe no carrinho do usuário", async () => {
-        await expect(context.useCase.execute({ userId: "user-1", productId: "product-1" })).rejects.toThrow(
+    it("recusa remover item que não existe no carrinho", async () => {
+        await expect(context.useCase.execute({ cartId: "cart-1", productId: "product-1" })).rejects.toThrow(
             NotFoundError
         );
-        await expect(context.useCase.execute({ userId: "user-1", productId: "product-1" })).rejects.toThrow(
+        await expect(context.useCase.execute({ cartId: "cart-1", productId: "product-1" })).rejects.toThrow(
             "Item não encontrado no carrinho."
         );
     });
 
-    it("nunca remove item de outro usuário (recurso pertence a outro dono responde como inexistente)", async () => {
-        await context.cartItemRepo.save(CartItem.build(createId, "outro-usuario", "product-1", 2));
+    it("nunca remove item de outro carrinho (recurso de outro dono responde como inexistente)", async () => {
+        await context.cartItemRepo.save(CartItem.build(createId, "outro-carrinho", "product-1", 2));
 
-        await expect(context.useCase.execute({ userId: "user-1", productId: "product-1" })).rejects.toThrow(
+        await expect(context.useCase.execute({ cartId: "cart-1", productId: "product-1" })).rejects.toThrow(
             NotFoundError
         );
-        const stillThere = await context.cartItemRepo.findBy({ userId: "outro-usuario", productId: "product-1" } as never);
+        const stillThere = await context.cartItemRepo.findBy({ cartId: "outro-carrinho", productId: "product-1" } as never);
         expect(stillThere).not.toBeNull();
     });
 });

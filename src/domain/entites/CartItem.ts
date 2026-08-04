@@ -5,7 +5,7 @@ import { CreateId } from "../interface/CreateId";
 export class CartItem {
     constructor(
         public readonly id: string,
-        public readonly userId: string,
+        public readonly cartId: string,
         public readonly productId: string,
         public quantity: number,
         public readonly created_at: Date = new Date(),
@@ -17,9 +17,9 @@ export class CartItem {
         return this._deleted_at;
     }
 
-    static build(createId: CreateId, userId: string, productId: string, quantity: number): CartItem {
+    static build(createId: CreateId, cartId: string, productId: string, quantity: number): CartItem {
         CartItem.assertValidQuantity(quantity);
-        return new CartItem(createId(), userId, productId, quantity);
+        return new CartItem(createId(), cartId, productId, quantity);
     }
 
     private static assertValidQuantity(quantity: number): void {

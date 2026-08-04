@@ -56,41 +56,6 @@ describe("CartValidator", () => {
         });
     });
 
-    describe("validateMerge", () => {
-        it("aceita uma lista de itens válidos", () => {
-            const validator = new CartValidator();
-
-            const result = validator.validateMerge({
-                items: [
-                    { productId: VALID_PRODUCT_ID, quantity: 2 },
-                ],
-            });
-
-            expect(result.items).toEqual([{ productId: VALID_PRODUCT_ID, quantity: 2 }]);
-        });
-
-        it("recusa quando falta a lista de itens", () => {
-            const validator = new CartValidator();
-
-            expect(() => validator.validateMerge({})).toThrow(ValidationError);
-        });
-
-        it("recusa quando algum item da lista tem productId inválido", () => {
-            const validator = new CartValidator();
-
-            expect(() =>
-                validator.validateMerge({ items: [{ productId: "invalido", quantity: 1 }] })
-            ).toThrow();
-        });
-
-        it("recusa lista com mais itens do que o limite máximo", () => {
-            const validator = new CartValidator();
-            const items = Array.from({ length: 101 }, () => ({ productId: VALID_PRODUCT_ID, quantity: 1 }));
-
-            expect(() => validator.validateMerge({ items })).toThrow(ValidationError);
-        });
-    });
-
     describe("formatError", () => {
         it("formata um ValidationError em um mapa de campo para lista de mensagens", () => {
             const validator = new CartValidator();

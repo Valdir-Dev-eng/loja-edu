@@ -20,7 +20,7 @@ export class AddCartItem {
             throw new NotFoundError("Produto não encontrado.");
         }
 
-        const existing = await this.cartItemRepo.findBy({ userId: input.userId, productId: input.productId } as never);
+        const existing = await this.cartItemRepo.findBy({ cartId: input.cartId, productId: input.productId } as never);
         const currentQuantity = existing?.quantity ?? 0;
         const addableQuantity = Math.min(input.quantity, Math.max(product.stock - currentQuantity, 0));
         if (addableQuantity <= 0) {
@@ -33,7 +33,7 @@ export class AddCartItem {
             return this.toOutput(product, existing.quantity);
         }
 
-        const cartItem = CartItem.build(this.createId, input.userId, input.productId, addableQuantity);
+        const cartItem = CartItem.build(this.createId, input.cartId, input.productId, addableQuantity);
         await this.cartItemRepo.save(cartItem);
         return this.toOutput(product, cartItem.quantity);
     }

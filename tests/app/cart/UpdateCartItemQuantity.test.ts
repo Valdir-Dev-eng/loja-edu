@@ -25,9 +25,9 @@ describe("UpdateCartItemQuantity", () => {
     it("atualiza a quantidade do item existente", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", product.id, 2));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", product.id, 2));
 
-        const output = await context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 5 });
+        const output = await context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 5 });
 
         expect(output?.quantity).toBe(5);
     });
@@ -35,9 +35,9 @@ describe("UpdateCartItemQuantity", () => {
     it("limita a quantidade ao estoque disponível", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 4, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", product.id, 2));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", product.id, 2));
 
-        const output = await context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 100 });
+        const output = await context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 100 });
 
         expect(output?.quantity).toBe(4);
     });
@@ -45,30 +45,40 @@ describe("UpdateCartItemQuantity", () => {
     it("remove o item quando a quantidade informada é zero", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", product.id, 2));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", product.id, 2));
 
-        const output = await context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 0 });
+        const output = await context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 0 });
 
         expect(output).toBeNull();
-        const remaining = await context.cartItemRepo.findBy({ userId: "user-1", productId: product.id } as never);
+        const remaining = await context.cartItemRepo.findBy({ cartId: "cart-1", productId: product.id } as never);
         expect(remaining).toBeNull();
     });
 
-    it("recusa atualizar item que não está no carrinho do usuário", async () => {
+    it("recusa atualizar item que não está no carrinho", async () => {
         await expect(
-            context.useCase.execute({ userId: "user-1", productId: "produto-qualquer", quantity: 1 })
+            context.useCase.execute({ cartId: "cart-1", productId: "produto-qualquer", quantity: 1 })
+        ).rejects.toThrow(NotFoundError);
+    });
+
+    it("recusa atualizar item de outro carrinho (nunca mistura carrinhos diferentes)", async () => {
+        const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
+        await context.productRepo.save(product);
+        await context.cartItemRepo.save(CartItem.build(createId, "outro-carrinho", product.id, 2));
+
+        await expect(
+            context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 3 })
         ).rejects.toThrow(NotFoundError);
     });
 
     it("recusa atualizar quando o produto não existe mais", async () => {
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await context.productRepo.save(product);
-        await context.cartItemRepo.save(CartItem.build(createId, "user-1", product.id, 2));
+        await context.cartItemRepo.save(CartItem.build(createId, "cart-1", product.id, 2));
         product.softDelete();
         await context.productRepo.update(product.id, { deleted_at: new Date() });
 
         await expect(
-            context.useCase.execute({ userId: "user-1", productId: product.id, quantity: 3 })
+            context.useCase.execute({ cartId: "cart-1", productId: product.id, quantity: 3 })
         ).rejects.toThrow(NotFoundError);
     });
 });
