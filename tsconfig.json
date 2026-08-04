@@ -11,5 +11,5 @@
     "verbatimModuleSyntax": false,
     "isolatedModules": true
   },
-  "exclude": ["tsup.config.ts", "tests", "storefront"]
+  "exclude": ["tsup.config.ts", "tests", "storefront", "web"]
 }
