@@ -132,13 +132,19 @@ export class UserAuthRouter {
                     console.error("Falha ao anexar carrinho anonimo ao usuario logado:", attachError);
                 });
             }
+            // O destino final e' decidido aqui, nao no cliente: mandar sempre
+            // pra Home e deixar o JS decidir se redireciona de novo pro
+            // /onboarding fazia a Home renderizar inteira (com o aviso de
+            // "complete seu cadastro" disparando ali) antes do segundo salto
+            // — dava a impressao de tela travando/recarregando.
+            const destinationPath = result.onboardingPending ? "/onboarding" : "/?loginSuccess=true";
             // "loja" e o novo frontend Next.js, que em dev vive numa origem
             // separada do Express — precisa de URL absoluta, nao caminho
             // relativo (senao o navegador fica na origem do Express).
             const target =
                 origin === "loja"
-                    ? `${ConfigDomain.getLojaOrigin()}/?onboardingPending=${result.onboardingPending}`
-                    : `${HARNESS_ROUTE_PREFIX}/?onboardingPending=${result.onboardingPending}`;
+                    ? `${ConfigDomain.getLojaOrigin()}${destinationPath}`
+                    : `${HARNESS_ROUTE_PREFIX}${destinationPath}`;
             return res.redirect(target);
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);

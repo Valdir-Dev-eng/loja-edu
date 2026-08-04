@@ -333,8 +333,8 @@ describe("UserAuthRouter — GET /auth/google/callback", () => {
         expect(res.statusCode).toBe(401);
     });
 
-    it("no sucesso, redireciona (não JSON) pra raiz do LOJA_ORIGIN_LOCAL quando oauthOrigin é 'loja'", async () => {
-        kit.oauthProvider.authorizeNextExchangeWithEmail("cliente@teste.com");
+    it("no sucesso com onboarding pendente (usuário novo), redireciona DIRETO pra /onboarding — nunca passa pela Home", async () => {
+        kit.oauthProvider.authorizeNextExchangeWithEmail("cliente-novo@teste.com");
         const handler = findCallbackHandler();
         const req = buildReq(undefined, {
             query: { code: "codigo-valido", state: "state-certo" },
@@ -349,15 +349,35 @@ describe("UserAuthRouter — GET /auth/google/callback", () => {
         await handler(req, res as unknown as IResponse, () => {});
 
         // O prefixo (LOJA_ORIGIN_LOCAL) e' especifico do .env de cada
-        // ambiente (localhost, tunel ngrok etc.) — o comportamento que
-        // importa e' terminar em "/?onboardingPending=true", nao um valor
-        // de origem fixo.
-        expect(res.redirectedTo).toMatch(/\/\?onboardingPending=true$/);
+        // ambiente (localhost, tunel ngrok etc.) — o que importa e' terminar
+        // em "/onboarding" direto, sem passar por "/" primeiro (isso fazia a
+        // Home renderizar inteira, com o aviso de cadastro pendente disparando
+        // ali, antes do segundo salto — parecia a tela travando).
+        expect(res.redirectedTo).toMatch(/\/onboarding$/);
         expect(res.jsonBody).toBeNull();
     });
 
-    it("no sucesso, redireciona para '/app/' quando oauthOrigin não é 'loja' (padrão admin)", async () => {
-        kit.oauthProvider.authorizeNextExchangeWithEmail("admin@teste.com");
+    it("no sucesso com onboarding já concluído, redireciona pra Home com ?loginSuccess=true", async () => {
+        const existingUser = await kit.createUser(UserRole.CUSTOMER, true);
+        kit.oauthProvider.authorizeNextExchangeWithEmail(existingUser.email);
+        const handler = findCallbackHandler();
+        const req = buildReq(undefined, {
+            query: { code: "codigo-valido", state: "state-certo" },
+            cookies: {
+                oauthState: "state-certo",
+                oauthRedirectUri: "https://x/auth/google/callback",
+                oauthOrigin: "loja",
+            },
+        });
+        const res = new FakeResponse();
+
+        await handler(req, res as unknown as IResponse, () => {});
+
+        expect(res.redirectedTo).toMatch(/\/\?loginSuccess=true$/);
+    });
+
+    it("no sucesso, redireciona para '/app/onboarding' quando oauthOrigin não é 'loja' (padrão admin)", async () => {
+        kit.oauthProvider.authorizeNextExchangeWithEmail("admin-novo@teste.com");
         const handler = findCallbackHandler();
         const req = buildReq(undefined, {
             query: { code: "codigo-valido", state: "state-certo" },
@@ -367,7 +387,7 @@ describe("UserAuthRouter — GET /auth/google/callback", () => {
 
         await handler(req, res as unknown as IResponse, () => {});
 
-        expect(res.redirectedTo).toMatch(/^\/app\/\?onboardingPending=/);
+        expect(res.redirectedTo).toBe("/app/onboarding");
     });
 
     it("no sucesso, define o cookie de sessão (tokenUser) e limpa os cookies temporários de OAuth", async () => {
