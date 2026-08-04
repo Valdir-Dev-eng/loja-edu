@@ -32,8 +32,8 @@ export function ProductBuyBox({ product, activeImageUrl }: ProductBuyBoxProps) {
   const finalPrice = finalPriceCents(product.priceCents, product.discountCents);
   const outOfStock = product.stock <= 0;
 
-  function handleAddToCart(): boolean {
-    const result = addItem(
+  async function handleAddToCart(): Promise<boolean> {
+    const result = await addItem(
       {
         productId: product.id,
         name: product.name,
@@ -60,8 +60,8 @@ export function ProductBuyBox({ product, activeImageUrl }: ProductBuyBoxProps) {
     return false;
   }
 
-  function handleBuyNow() {
-    if (handleAddToCart()) {
+  async function handleBuyNow() {
+    if (await handleAddToCart()) {
       router.push("/carrinho");
     }
   }

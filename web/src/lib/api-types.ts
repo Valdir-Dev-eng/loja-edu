@@ -114,6 +114,15 @@ export interface PaymentStatusOutput {
   status: OrderStatus;
 }
 
+export interface CartItemOutput {
+  productId: string;
+  productName: string;
+  priceCents: number;
+  discountCents: number | null;
+  stock: number;
+  quantity: number;
+}
+
 export interface ApiErrorBody {
   error: string;
   details?: Record<string, string[]>;

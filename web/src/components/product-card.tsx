@@ -26,8 +26,8 @@ export function ProductCard({ product, imageUrl }: ProductCardProps) {
   const finalPrice = finalPriceCents(product.priceCents, product.discountCents);
   const outOfStock = product.stock <= 0;
 
-  function handleAdd() {
-    const result = addItem({
+  async function handleAdd() {
+    const result = await addItem({
       productId: product.id,
       name: product.name,
       priceCents: product.priceCents,

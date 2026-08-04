@@ -13,9 +13,21 @@ export default function CarrinhoPage() {
   const { items, subtotalCents, updateQuantity, removeItem } = useCart();
   const { notify } = useNotifications();
 
-  function handleRemove(productId: string, name: string) {
-    removeItem(productId);
-    notify({ type: "info", title: "Item removido", message: name });
+  async function handleRemove(productId: string, name: string) {
+    try {
+      await removeItem(productId);
+      notify({ type: "info", title: "Item removido", message: name });
+    } catch {
+      notify({ type: "error", title: "Não foi possível remover o item", message: "Tente novamente." });
+    }
+  }
+
+  async function handleUpdateQuantity(productId: string, quantity: number) {
+    try {
+      await updateQuantity(productId, quantity);
+    } catch {
+      notify({ type: "error", title: "Não foi possível atualizar a quantidade", message: "Tente novamente." });
+    }
   }
 
   if (items.length === 0) {
@@ -53,7 +65,7 @@ export default function CarrinhoPage() {
                 <div className="mt-1 flex w-fit items-center overflow-hidden rounded-md border border-border">
                   <button
                     type="button"
-                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                    onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1)}
                     aria-label="Diminuir quantidade"
                     className="flex size-9 items-center justify-center bg-secondary"
                   >
@@ -62,7 +74,7 @@ export default function CarrinhoPage() {
                   <span className="flex w-10 items-center justify-center text-sm font-semibold">{item.quantity}</span>
                   <button
                     type="button"
-                    onClick={() => updateQuantity(item.productId, Math.min(item.quantity + 1, item.stock))}
+                    onClick={() => handleUpdateQuantity(item.productId, Math.min(item.quantity + 1, item.stock))}
                     aria-label="Aumentar quantidade"
                     disabled={item.quantity >= item.stock}
                     className="flex size-9 items-center justify-center bg-secondary disabled:opacity-40"
