@@ -3,6 +3,7 @@ import { TrustSection } from "@/components/trust-section";
 import { ProductCard } from "@/components/product-card";
 import { getPrimaryProductImageUrl, getProducts } from "@/lib/data";
 import type { ProductOutput } from "@/lib/api-types";
+import { PostLoginRedirect } from "./post-login-redirect";
 
 const CURATED_SECTION_LIMIT = 8;
 
@@ -28,6 +29,7 @@ export default async function Home() {
 
   return (
     <div>
+      <PostLoginRedirect />
       <HeroBanner />
       <TrustSection />
 
