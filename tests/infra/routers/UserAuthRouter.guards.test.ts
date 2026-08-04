@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { UserRole } from "../../../src/domain/entites/User";
 import { SessionInjection } from "../../../src/infra/routers/UserAuthRouter";
 import { IRequest, IResponse } from "../../../src/infra/server/ServerPort";
@@ -233,9 +233,21 @@ describe("UserAuthRouter — logout revoga a sessão de verdade", () => {
 
 describe("UserAuthRouter — GET /auth/google (entrada do login)", () => {
     let kit: ReturnType<typeof buildAuthTestKit>;
+    // ConfigDomain.getDomain() decide DOMAIN_LOCAL vs DOMAIN_PROD por
+    // NODE_ENV — o vitest seta NODE_ENV=test antes do dotenv rodar, entao
+    // o .env real (NODE_ENV=development) nunca chega a valer aqui. Fixamos
+    // "development" no teste pra exercitar o mesmo branch que roda de
+    // verdade em dev, sem depender do que a maquina de quem roda o teste
+    // tem configurado no ambiente.
+    const originalNodeEnv = process.env.NODE_ENV;
 
     beforeEach(() => {
+        process.env.NODE_ENV = "development";
         kit = buildAuthTestKit();
+    });
+
+    afterEach(() => {
+        process.env.NODE_ENV = originalNodeEnv;
     });
 
     const findRedirectHandler = () =>
@@ -276,9 +288,17 @@ describe("UserAuthRouter — GET /auth/google (entrada do login)", () => {
 
 describe("UserAuthRouter — GET /auth/google/callback", () => {
     let kit: ReturnType<typeof buildAuthTestKit>;
+    // Mesmo motivo do describe acima: getLojaOrigin() tambem cai no branch
+    // de DOMAIN_PROD sem isso, mesmo rodando local.
+    const originalNodeEnv = process.env.NODE_ENV;
 
     beforeEach(() => {
+        process.env.NODE_ENV = "development";
         kit = buildAuthTestKit();
+    });
+
+    afterEach(() => {
+        process.env.NODE_ENV = originalNodeEnv;
     });
 
     const findCallbackHandler = () =>
@@ -313,7 +333,7 @@ describe("UserAuthRouter — GET /auth/google/callback", () => {
         expect(res.statusCode).toBe(401);
     });
 
-    it("no sucesso, redireciona (não JSON) para '/' quando oauthOrigin é 'loja'", async () => {
+    it("no sucesso, redireciona (não JSON) pra raiz do LOJA_ORIGIN_LOCAL quando oauthOrigin é 'loja'", async () => {
         kit.oauthProvider.authorizeNextExchangeWithEmail("cliente@teste.com");
         const handler = findCallbackHandler();
         const req = buildReq(undefined, {
@@ -328,7 +348,11 @@ describe("UserAuthRouter — GET /auth/google/callback", () => {
 
         await handler(req, res as unknown as IResponse, () => {});
 
-        expect(res.redirectedTo).toMatch(/^\/\?onboardingPending=/);
+        // O prefixo (LOJA_ORIGIN_LOCAL) e' especifico do .env de cada
+        // ambiente (localhost, tunel ngrok etc.) — o comportamento que
+        // importa e' terminar em "/?onboardingPending=true", nao um valor
+        // de origem fixo.
+        expect(res.redirectedTo).toMatch(/\/\?onboardingPending=true$/);
         expect(res.jsonBody).toBeNull();
     });
 
