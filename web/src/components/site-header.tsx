@@ -34,6 +34,15 @@ function GuestLoginButton({ size }: { size?: "lg" }) {
   );
 }
 
+// Fallback do Suspense enquanto getSessionUser() resolve — nao pode ser o
+// GuestLoginButton, senao todo usuario logado ve o botao "Entrar" piscar
+// antes de virar o menu de conta a cada carregamento de pagina (inclusive
+// logo apos o login, quando e mais visivel). Um placeholder neutro deixa
+// a transicao parecer "carregando", nao "trocou de estado errado".
+function AccountSlotSkeleton({ size }: { size?: "lg" }) {
+  return <div className={`animate-pulse rounded-md bg-secondary ${size === "lg" ? "h-9 w-full" : "h-8 w-24"}`} />;
+}
+
 // Resolvido no servidor (getSessionUser le o cookie httpOnly direto) — o
 // navegador nunca faz uma chamada a /auth/me pra decidir o que mostrar aqui.
 // Envolvido em Suspense pra so essa fatia do header ficar "dinamica" (Cache
@@ -113,7 +122,7 @@ export function SiteHeader() {
         </form>
 
         <nav className="ml-auto hidden items-center gap-2 lg:flex">
-          <Suspense fallback={<GuestLoginButton />}>
+          <Suspense fallback={<AccountSlotSkeleton />}>
             <DesktopAccountSlot />
           </Suspense>
           <Button variant="outline" asChild className="relative">
@@ -170,7 +179,7 @@ export function SiteHeader() {
                 ))}
               </nav>
 
-              <Suspense fallback={<GuestLoginButton size="lg" />}>
+              <Suspense fallback={<AccountSlotSkeleton size="lg" />}>
                 <MobileAccountLinks />
               </Suspense>
             </SheetContent>
