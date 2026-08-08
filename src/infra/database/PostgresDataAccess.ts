@@ -9,6 +9,14 @@ const POOL_MAX_CONNECTIONS = 10;
 // qualquer tabela/constraint, nao e' string de mensagem (essa nunca muda por
 // idioma/versao). https://www.postgresql.org/docs/current/errcodes-appendix.html
 const UNIQUE_VIOLATION_CODE = '23505';
+// `constraint_name` e' campo estruturado do protocolo Postgres (igual
+// `code`), nao mensagem — nao muda com idioma/versao do servidor. Mapeia pro
+// texto de negocio quando a gente sabe qual constraint e' qual; qualquer
+// constraint fora desse mapa cai no generico abaixo, nunca quebra.
+const UNIQUE_VIOLATION_MESSAGES: Record<string, string> = {
+  users_document_unique_idx: 'Este CPF/CNPJ já está cadastrado em outra conta.',
+};
+const GENERIC_UNIQUE_VIOLATION_MESSAGE = 'Já existe um registro com esses dados.';
 
 export class PostgresDataAccess extends DataAccessPort {
   private readonly sql: postgres.Sql;
@@ -80,19 +88,22 @@ export class PostgresDataAccess extends DataAccessPort {
     return typeof code === 'string' && this.retryableConnectionErrorCodes.includes(code);
   }
 
-  // Traduz erros do DRIVER (identificados por codigo real do protocolo, nunca
-  // por mensagem) pra erros de dominio que o HttpErrorMapper sabe responder.
-  // Ponto unico — todo INSERT/UPDATE passa por executeQuery, entao qualquer
-  // violacao de unique constraint em qualquer tabela cai aqui, sem precisar
-  // de tratamento por chamador. Mensagem generica de proposito: o detalhe
-  // especifico (ex.: "CPF ja cadastrado em outra conta") continua vindo da
-  // checagem otimista na use case, quando ela existe — isso aqui e' so a
-  // rede de seguranca pra quando duas escritas concorrentes furam a
-  // checagem otimista e o indice unico do banco e' quem realmente decide.
+  // Traduz erros do DRIVER (identificados por codigo/campo real do
+  // protocolo, nunca por mensagem) pra erros de dominio que o
+  // HttpErrorMapper sabe responder E que o frontend consegue mostrar direto
+  // pro usuario. Ponto unico — todo INSERT/UPDATE passa por executeQuery,
+  // entao qualquer violacao de unique constraint em qualquer tabela cai
+  // aqui, sem precisar de tratamento por chamador. Isso e' a rede de
+  // seguranca pra quando duas escritas concorrentes furam a checagem
+  // otimista da use case (quando ela existe) e o indice unico do banco e'
+  // quem realmente decide — por isso usa a MESMA mensagem que a checagem
+  // otimista já usa (ex.: CompleteOnboarding.ts), pra ficar consistente
+  // independente de qual caminho pegou o conflito.
   private translateKnownPostgresError(error: unknown): unknown {
-    const code = (error as { code?: string })?.code;
-    if (code === UNIQUE_VIOLATION_CODE) {
-      return new ConflictError('Já existe um registro com esses dados.');
+    const pgError = error as { code?: string; constraint_name?: string };
+    if (pgError?.code === UNIQUE_VIOLATION_CODE) {
+      const message = UNIQUE_VIOLATION_MESSAGES[pgError.constraint_name ?? ''] ?? GENERIC_UNIQUE_VIOLATION_MESSAGE;
+      return new ConflictError(message);
     }
     return error;
   }

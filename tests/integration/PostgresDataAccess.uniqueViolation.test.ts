@@ -55,6 +55,30 @@ describe("PostgresDataAccess — violação de unique constraint vira ConflictEr
         }
 
         expect(caughtError).toBeInstanceOf(ConflictError);
+        expect((caughtError as Error).message).toBe("Este CPF/CNPJ já está cadastrado em outra conta.");
+    });
+
+    it("constraint sem mensagem mapeada (ex.: users_email_unique) cai no genérico, não quebra", async () => {
+        db = new PostgresDataAccess();
+        userRepository = new UserRepository(db);
+        const suffix = Math.random().toString(36).slice(2, 8);
+        const sharedEmail = `unique-violation-email-${suffix}@teste.com`;
+
+        const firstUser = User.build(() => crypto.randomUUID(), sharedEmail, `uve1${suffix}`);
+        await userRepository.save(firstUser);
+        firstUserId = firstUser.id;
+
+        const secondUser = User.build(() => crypto.randomUUID(), sharedEmail, `uve2${suffix}`);
+        secondUserId = secondUser.id;
+
+        let caughtError: unknown;
+        try {
+            await userRepository.save(secondUser);
+        } catch (error) {
+            caughtError = error;
+        }
+
+        expect(caughtError).toBeInstanceOf(ConflictError);
         expect((caughtError as Error).message).toBe("Já existe um registro com esses dados.");
     });
 });
