@@ -65,16 +65,21 @@ export async function proxy(request: NextRequest) {
         }
     }
 
-    // Gate de /login e /onboarding: decidido AQUI, antes de qualquer render/
-    // hidratacao — nao dentro dos Server Components dessas paginas. Fazer
-    // isso via redirect() no componente rodava numa corrida real contra a
-    // hidratacao do cliente sob Cache Components (o redirect chega como
+    // Gate de /login, /onboarding e das rotas de conta (/perfil, /pedidos,
+    // /enderecos — antigo AccountGate): decidido AQUI, antes de qualquer
+    // render/hidratacao — nao dentro dos Server Components dessas paginas.
+    // Fazer isso via redirect() no componente rodava numa corrida real contra
+    // a hidratacao do cliente sob Cache Components (o redirect chega como
     // marcador dentro do stream RSC, ja que o shell estatico sai com HTTP 200
     // antes da parte dinamica sequer rodar — o cliente as vezes nao estava
-    // pronto pra processar esse marcador, causando recarregamento repetido).
-    // Um redirect HTTP de verdade aqui nao depende de nenhum React montado.
+    // pronto pra processar esse marcador, causando recarregamento repetido/
+    // render parcial travado). Um redirect HTTP de verdade aqui nao depende
+    // de nenhum React montado.
     const pathname = request.nextUrl.pathname;
-    if (pathname === "/login" || pathname === "/onboarding") {
+    const ACCOUNT_PATHS = ["/perfil", "/pedidos", "/enderecos"];
+    const isAccountPath = ACCOUNT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+
+    if (pathname === "/login" || pathname === "/onboarding" || isAccountPath) {
         const user = await resolveUser(accessToken);
 
         if (pathname === "/login" && user) {
@@ -90,6 +95,18 @@ export async function proxy(request: NextRequest) {
             }
             if (user.onboardingCompleted) {
                 const response = NextResponse.redirect(new URL("/", request.url));
+                if (refreshedSetCookie) response.headers.append("set-cookie", refreshedSetCookie);
+                return response;
+            }
+        }
+        if (isAccountPath) {
+            if (!user) {
+                const response = NextResponse.redirect(new URL("/login", request.url));
+                if (refreshedSetCookie) response.headers.append("set-cookie", refreshedSetCookie);
+                return response;
+            }
+            if (!user.onboardingCompleted) {
+                const response = NextResponse.redirect(new URL("/onboarding", request.url));
                 if (refreshedSetCookie) response.headers.append("set-cookie", refreshedSetCookie);
                 return response;
             }
