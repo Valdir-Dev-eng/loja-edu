@@ -59,6 +59,14 @@ export class ProductRepository extends RepositoryPort<Product> {
     return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
   }
 
+  async updateIfEqual(id: string, field: keyof Product & string, expectedValue: unknown, data: Partial<Product>): Promise<boolean> {
+    return this.dataAccess.updateIfEqual(this.collectionName, id, field, expectedValue, this.toColumnQuery(data));
+  }
+
+  async incrementField(id: string, field: keyof Product & string, amount: number): Promise<void> {
+    await this.dataAccess.incrementField(this.collectionName, id, field, amount);
+  }
+
   private toColumns(entity: Product): Record<string, unknown> {
     return {
       id: entity.id,

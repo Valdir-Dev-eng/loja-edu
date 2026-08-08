@@ -1,11 +1,21 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { RateLimitTierConfig } from "../../src/domain/rateLimit/RateLimitPolicy";
 import { RedisRateLimiterAdapter } from "../../src/infra/rateLimit/RedisRateLimiterAdapter";
+import { RedisCircuitBreaker } from "../../src/infra/shared/RedisCircuitBreaker";
+import { InMemoryRateLimiter } from "../../src/infra/rateLimit/InMemoryRateLimiter";
 
 describe("RedisRateLimiterAdapter — prova de concorrência real (Redis do projeto, não Fake)", () => {
-    const adapter = new RedisRateLimiterAdapter();
+    // Breaker dedicado a este describe, novo por cima do modulo — nao e' o
+    // breaker compartilhado do AppModule. Fica fechado o tempo todo aqui
+    // porque o Redis real do projeto esta no ar; o teste de ciclo
+    // fechado->aberto->fallback mora em outro arquivo, contra um endpoint
+    // deliberadamente morto.
+    const breaker = new RedisCircuitBreaker({ failureThreshold: 3, halfOpenIntervalMs: 15_000 });
+    const fallback = new InMemoryRateLimiter();
+    const adapter = new RedisRateLimiterAdapter(breaker, fallback);
 
     afterAll(async () => {
+        fallback.stop();
         await adapter.disconnect();
     });
 
@@ -16,6 +26,7 @@ describe("RedisRateLimiterAdapter — prova de concorrência real (Redis do proj
             windowMs: 60_000,
             maxRequestsInWindow: 3,
             blockDurationMs: 60_000,
+            fallbackPolicy: "in-memory",
         };
         const key = `ratelimit:concurrency-proof:test:${Date.now()}-${Math.random()}`;
 
@@ -32,6 +43,7 @@ describe("RedisRateLimiterAdapter — prova de concorrência real (Redis do proj
             windowMs: 60_000,
             maxRequestsInWindow: 2,
             blockDurationMs: 45_000,
+            fallbackPolicy: "in-memory",
         };
         const key = `ratelimit:concurrency-proof-block:test:${Date.now()}-${Math.random()}`;
 

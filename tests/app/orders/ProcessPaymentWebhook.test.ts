@@ -5,18 +5,26 @@ import { Product } from "../../../src/domain/entites/Product";
 import { ConflictError } from "../../../src/domain/errors/ConflictError";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
 import { PaymentStatus } from "../../../src/domain/payment/PaymentGatewayPort";
-import { InMemoryRepository } from "../../doubles/InMemoryRepository";
+import { OrderRepository } from "../../../src/infra/repository/OrderRepository";
+import { ProductRepository } from "../../../src/infra/repository/ProductRepository";
+import { TestWithMemoryDataAcess } from "../../doubles/TestWithMemoryDataAcess";
 import { FakePaymentGatewayPort } from "../../doubles/FakePaymentGatewayPort";
 
 let sequence = 0;
 const createId = () => `generated-id-${++sequence}`;
 
+// Repositorios reais (OrderRepository/ProductRepository) sobre o fake
+// generico de DataAccessPort — nao o InMemoryRepository simplificado —
+// porque ProcessPaymentWebhook agora precisa de dataAccess.transaction() e
+// de withTransaction() nos repos, que so o par real repo+DataAccessPort
+// oferece. Mesmo double usado no teste de concorrencia do estoque.
 const buildUseCase = () => {
-    const orderRepo = new InMemoryRepository<Order>();
-    const productRepo = new InMemoryRepository<Product>();
+    const db = new TestWithMemoryDataAcess();
+    const orderRepo = new OrderRepository(db);
+    const productRepo = new ProductRepository(db);
     const paymentGateway = new FakePaymentGatewayPort();
-    const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway);
-    return { useCase, orderRepo, productRepo, paymentGateway };
+    const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db);
+    return { useCase, orderRepo, productRepo, paymentGateway, db };
 };
 
 const buildPendingOrder = async (context: ReturnType<typeof buildUseCase>, quantity = 2) => {
@@ -119,6 +127,29 @@ describe("ProcessPaymentWebhook", () => {
         expect(persistedProduct?.stock).toBe(10 + 3);
     });
 
+    it("desfaz a transação inteira se um efeito colateral falhar no meio: pedido volta pro estado original, sem torn write", async () => {
+        const { order, product } = await buildPendingOrder(context, 3);
+        context.paymentGateway.setNextStatusResult({
+            externalPaymentId: "mp-payment-1",
+            orderId: order.id,
+            status: PaymentStatus.REJECTED,
+            paidAmountCents: 0,
+        });
+        // A transacao ja teria "vencido" a transicao de status do pedido
+        // quando restoreStock falha logo em seguida — prova que o rollback
+        // desfaz ISSO tambem, nao so o efeito que falhou.
+        context.db.failNextCallTo("produtos", "incrementField");
+
+        await expect(context.useCase.execute({ externalPaymentId: "mp-payment-1" })).rejects.toThrow(
+            "Falha simulada injetada em incrementField:produtos"
+        );
+
+        const persistedOrder = await context.orderRepo.findById(order.id);
+        const persistedProduct = await context.productRepo.findById(product.id);
+        expect(persistedOrder?.status).toBe(OrderStatus.PENDING_PAYMENT);
+        expect(persistedProduct?.stock).toBe(10);
+    });
+
     it("devolve o estoque quando o pagamento é cancelado", async () => {
         const { order, product } = await buildPendingOrder(context, 4);
         context.paymentGateway.setNextStatusResult({
@@ -192,7 +223,7 @@ describe("ProcessPaymentWebhook", () => {
 
         await expect(context.useCase.execute({ externalPaymentId: "mp-payment-1" })).rejects.toThrow(ConflictError);
         await expect(context.useCase.execute({ externalPaymentId: "mp-payment-1" })).rejects.toThrow(
-            "Pedido não está mais aguardando pagamento."
+            "Não é possível confirmar pagamento de um pedido que não está mais aguardando pagamento."
         );
     });
 

@@ -2,20 +2,25 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { GetOrderPaymentStatus } from "../../../src/app/orders/useCase/GetOrderPaymentStatus";
 import { ProcessPaymentWebhook } from "../../../src/app/orders/useCase/ProcessPaymentWebhook";
 import { Order, OrderStatus } from "../../../src/domain/entites/Order";
-import { Product } from "../../../src/domain/entites/Product";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
 import { PaymentStatus } from "../../../src/domain/payment/PaymentGatewayPort";
+import { OrderRepository } from "../../../src/infra/repository/OrderRepository";
+import { ProductRepository } from "../../../src/infra/repository/ProductRepository";
+import { TestWithMemoryDataAcess } from "../../doubles/TestWithMemoryDataAcess";
 import { FakePaymentGatewayPort } from "../../doubles/FakePaymentGatewayPort";
-import { InMemoryRepository } from "../../doubles/InMemoryRepository";
 
 let sequence = 0;
 const createId = () => `generated-id-${++sequence}`;
 
+// Mesmo motivo do ProcessPaymentWebhook.test.ts: precisa de repos reais sobre
+// um DataAccessPort de verdade, ja que ProcessPaymentWebhook (usado aqui como
+// fallback de reconciliacao) depende de dataAccess.transaction().
 const buildUseCase = () => {
-    const orderRepo = new InMemoryRepository<Order>();
-    const productRepo = new InMemoryRepository<Product>();
+    const db = new TestWithMemoryDataAcess();
+    const orderRepo = new OrderRepository(db);
+    const productRepo = new ProductRepository(db);
     const paymentGateway = new FakePaymentGatewayPort();
-    const processPaymentWebhook = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway);
+    const processPaymentWebhook = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db);
     const useCase = new GetOrderPaymentStatus(orderRepo, processPaymentWebhook);
     return { useCase, orderRepo, productRepo, paymentGateway };
 };

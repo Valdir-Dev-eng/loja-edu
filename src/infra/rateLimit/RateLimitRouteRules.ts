@@ -16,6 +16,7 @@ const OAUTH: RateLimitTierConfig = {
     windowMs: FIVE_MINUTES_MS,
     maxRequestsInWindow: 10,
     blockDurationMs: FIVE_MINUTES_MS,
+    fallbackPolicy: "in-memory",
 };
 
 const AUTHENTICATED_READ: RateLimitTierConfig = {
@@ -24,6 +25,7 @@ const AUTHENTICATED_READ: RateLimitTierConfig = {
     windowMs: FIVE_MINUTES_MS,
     maxRequestsInWindow: 60,
     blockDurationMs: FIVE_MINUTES_MS,
+    fallbackPolicy: "in-memory",
 };
 
 // /auth/me nao e' uma acao deliberada do usuario — todo Server Component que
@@ -42,6 +44,7 @@ const SESSION_CHECK: RateLimitTierConfig = {
     windowMs: FIVE_MINUTES_MS,
     maxRequestsInWindow: 300,
     blockDurationMs: FIVE_MINUTES_MS,
+    fallbackPolicy: "in-memory",
 };
 
 const GENERIC_WRITE: RateLimitTierConfig = {
@@ -50,6 +53,7 @@ const GENERIC_WRITE: RateLimitTierConfig = {
     windowMs: FIVE_MINUTES_MS,
     maxRequestsInWindow: 20,
     blockDurationMs: FIVE_MINUTES_MS,
+    fallbackPolicy: "in-memory",
 };
 
 const PAID_EXTERNAL_CALL: RateLimitTierConfig = {
@@ -58,6 +62,7 @@ const PAID_EXTERNAL_CALL: RateLimitTierConfig = {
     windowMs: FIVE_MINUTES_MS,
     maxRequestsInWindow: 5,
     blockDurationMs: TEN_MINUTES_MS,
+    fallbackPolicy: "in-memory",
 };
 
 const IMAGE_UPLOAD: RateLimitTierConfig = {
@@ -66,6 +71,7 @@ const IMAGE_UPLOAD: RateLimitTierConfig = {
     windowMs: FIVE_MINUTES_MS,
     maxRequestsInWindow: 10,
     blockDurationMs: TEN_MINUTES_MS,
+    fallbackPolicy: "in-memory",
 };
 
 const ROUTE_RULES: RouteRateLimitRule[] = [

@@ -60,6 +60,14 @@ export class ProductImageRepository extends RepositoryPort<ProductImage> {
         return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
     }
 
+    async updateIfEqual(id: string, field: keyof ProductImage & string, expectedValue: unknown, data: Partial<ProductImage>): Promise<boolean> {
+        return this.dataAccess.updateIfEqual(this.collectionName, id, field, expectedValue, this.toColumnQuery(data));
+    }
+
+    async incrementField(id: string, field: keyof ProductImage & string, amount: number): Promise<void> {
+        await this.dataAccess.incrementField(this.collectionName, id, field, amount);
+    }
+
     private toColumnQuery(entity: Partial<ProductImage>): Record<string, unknown> {
         const columns: Record<string, unknown> = {};
         if (entity.id !== undefined) columns.id = entity.id;

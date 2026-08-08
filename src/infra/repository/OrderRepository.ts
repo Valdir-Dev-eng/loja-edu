@@ -64,6 +64,14 @@ export class OrderRepository extends RepositoryPort<Order> {
         return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
     }
 
+    async updateIfEqual(id: string, field: keyof Order & string, expectedValue: unknown, data: Partial<Order>): Promise<boolean> {
+        return this.dataAccess.updateIfEqual(this.collectionName, id, field, expectedValue, this.toColumnQuery(data));
+    }
+
+    async incrementField(id: string, field: keyof Order & string, amount: number): Promise<void> {
+        await this.dataAccess.incrementField(this.collectionName, id, field, amount);
+    }
+
     private async hydrate(row: Record<string, unknown>): Promise<Order> {
         const [order] = await this.hydrateMany([row]);
         return order;

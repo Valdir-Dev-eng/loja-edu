@@ -31,10 +31,15 @@ import { RateLimiterPort } from "../../domain/rateLimit/RateLimiterPort";
 import { RedisRateLimiterAdapter } from "../rateLimit/RedisRateLimiterAdapter";
 import { RateLimitMiddleware } from "../rateLimit/RateLimitMiddleware";
 import { RateLimitRouteRules } from "../rateLimit/RateLimitRouteRules";
+import { InMemoryRateLimiter } from "../rateLimit/InMemoryRateLimiter";
+import { RedisCircuitBreaker } from "../shared/RedisCircuitBreaker";
 import { ShippingGatewayPort } from "../../domain/shipping/ShippingGatewayPort";
 import { MelhorEnvioAdapter } from "../shipping/MelhorEnvioAdapter";
 import { ShippingModule } from "./ShippingModule";
 import { CartModule } from "./CartModule";
+
+const CIRCUIT_BREAKER_FAILURE_THRESHOLD = 3;
+const CIRCUIT_BREAKER_HALF_OPEN_INTERVAL_MS = 15_000;
 
 
 export class AppModule {
@@ -42,9 +47,21 @@ export class AppModule {
     private server:ServerPort
     private cache:CachePort
     private serviceAuthToken:ServiceAuthToken
+    private redisRateLimiter:RedisRateLimiterAdapter
+    private redisCache:RedisCacheAdapter
+    private inMemoryRateLimiter:InMemoryRateLimiter
     constructor() {
         this.di = new DependencyInjection()
-        this.di.addDependency(new RedisCacheAdapter(), CachePort)
+        // Uma unica instancia de breaker, compartilhada entre cache e rate
+        // limiter — de proposito, ver comentario em RedisCircuitBreaker.ts.
+        const redisBreaker = new RedisCircuitBreaker({
+            failureThreshold: CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+            halfOpenIntervalMs: CIRCUIT_BREAKER_HALF_OPEN_INTERVAL_MS,
+        })
+        this.inMemoryRateLimiter = new InMemoryRateLimiter()
+        this.redisCache = new RedisCacheAdapter(redisBreaker)
+        this.redisRateLimiter = new RedisRateLimiterAdapter(redisBreaker, this.inMemoryRateLimiter)
+        this.di.addDependency(this.redisCache, CachePort)
         this.di.addDependency(new ServerExpressAdapter(), ServerPort)
         this.di.addDependency(new PostgresDataAccess(), DataAccessPort)
         this.di.addDependency(new ZodDTOBuilderAndValidator(), DTOBuilderAndValidator)
@@ -54,7 +71,7 @@ export class AppModule {
         this.di.addDependency(new MercadoPagoAdapter(), PaymentGatewayPort)
         this.di.addDependency(new SirvAdapter(this.di.getDependency(CachePort)), ImageStorageGatewayPort)
         this.di.addDependency(new MelhorEnvioAdapter(this.di.getDependency(DataAccessPort)), ShippingGatewayPort)
-        this.di.addDependency(new RedisRateLimiterAdapter(), RateLimiterPort)
+        this.di.addDependency(this.redisRateLimiter, RateLimiterPort)
         this.serviceAuthToken = new ServiceAuthToken(this.di)
         this.server = this.di.getDependency(ServerPort)
         this.cache = this.di.getDependency(CachePort)
@@ -85,5 +102,13 @@ export class AppModule {
     async listen(port:number): Promise<void> {
         await this.server.mountStorefront()
         this.server.listen(port)
+    }
+
+    async shutdown(): Promise<void> {
+        this.inMemoryRateLimiter.stop()
+        await Promise.all([
+            this.redisRateLimiter.disconnect().catch(() => {}),
+            this.redisCache.disconnect().catch(() => {}),
+        ])
     }
 }

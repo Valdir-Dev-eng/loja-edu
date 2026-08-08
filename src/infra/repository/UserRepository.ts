@@ -60,6 +60,14 @@ export class UserRepository extends RepositoryPort<User> {
         return this.dataAccess.decrementIfSufficient("users", id, field, amount);
     }
 
+    async updateIfEqual(id: string, field: keyof User & string, expectedValue: unknown, data: Partial<User>): Promise<boolean> {
+        return this.dataAccess.updateIfEqual("users", id, field, expectedValue, this.toColumnQuery(data));
+    }
+
+    async incrementField(id: string, field: keyof User & string, amount: number): Promise<void> {
+        await this.dataAccess.incrementField("users", id, field, amount);
+    }
+
     private toColumnQuery(entity: Partial<User>): Record<string, unknown> {
         const columns: Record<string, unknown> = {};
         if (entity.id !== undefined) columns.id = entity.id;

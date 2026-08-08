@@ -7,6 +7,7 @@ const config: RateLimitTierConfig = {
     windowMs: 5 * 60 * 1000,
     maxRequestsInWindow: 3,
     blockDurationMs: 5 * 60 * 1000,
+    fallbackPolicy: "in-memory",
 };
 
 const emptyState: RateLimitState = {

@@ -4,6 +4,16 @@ export interface RateLimitTierConfig {
     windowMs: number;
     maxRequestsInWindow: number;
     blockDurationMs: number;
+    /**
+     * O que fazer quando o Redis está indisponível (circuit breaker aberto):
+     * degrada pro limitador local (imprecisão aceita, ver InMemoryRateLimiter).
+     * Existiu uma opção "allow" (deixar passar sem contar, pra rotas onde
+     * perder a notificação é pior que qualquer abuso) mas nenhum tier real
+     * chegou a usá-la — o webhook de pagamento já é isento via `tiers: []`
+     * em RateLimitRouteRules.ts. Removida por não ter consumidor; se um caso
+     * real precisar dela, reintroduzir junto com o teste que a exercita.
+     */
+    fallbackPolicy: "in-memory";
 }
 
 export interface RateLimitState {

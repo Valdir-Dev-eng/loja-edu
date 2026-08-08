@@ -70,6 +70,31 @@ export class InMemoryRepository<T extends { id: string }> extends RepositoryPort
         return true;
     }
 
+    async updateIfEqual(id: string, field: keyof T & string, expectedValue: unknown, data: Partial<T>): Promise<boolean> {
+        const item = this.items.get(id);
+        if (!item || item[field] !== expectedValue) {
+            return false;
+        }
+        Object.assign(item as object, data);
+        return true;
+    }
+
+    async incrementField(id: string, field: keyof T & string, amount: number): Promise<void> {
+        const item = this.items.get(id);
+        if (!item) return;
+        const currentValue = item[field] as unknown as number;
+        (item[field] as unknown as number) = (typeof currentValue === "number" ? currentValue : 0) + amount;
+    }
+
+    // Fake sem conexao/pool de verdade — nao ha isolamento de transacao pra
+    // simular. O withTransaction generico da base assume um construtor
+    // (dataAccess: DataAccessPort), que este double nao tem (e' niladico);
+    // chamar aquele por acidente criaria um Map novo e vazio, silenciosamente
+    // desconectado do original. Sobrescreve pra devolver a si mesma.
+    withTransaction(): this {
+        return this;
+    }
+
     private matches(item: T, query: Partial<T>): boolean {
         return Object.entries(query).every(([key, value]) => (item as Record<string, unknown>)[key] === value);
     }

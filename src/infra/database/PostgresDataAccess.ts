@@ -1,16 +1,40 @@
 import postgres from 'postgres';
 import { DataAccessPort } from '../../domain/database/DataAcess';
+import { ConflictError } from '../../domain/errors/ConflictError';
 import { ConfigDb } from '../config/ConfigDb';
+import { withTimeout } from '../shared/withTimeout';
 
 const POOL_MAX_CONNECTIONS = 10;
+// Codigo de erro real do protocolo Postgres pra unique_violation — igual em
+// qualquer tabela/constraint, nao e' string de mensagem (essa nunca muda por
+// idioma/versao). https://www.postgresql.org/docs/current/errcodes-appendix.html
+const UNIQUE_VIOLATION_CODE = '23505';
 
 export class PostgresDataAccess extends DataAccessPort {
   private readonly sql: postgres.Sql;
+  private readonly queryTimeoutMs: number;
   private readonly allowedFields = ['id', 'name', 'ean', 'price', 'stock', 'discount', 'deleted_at'];
 
-  constructor() {
+  // `existingSql` so e usado internamente por transaction() pra construir uma
+  // instancia amarrada a conexao da transacao em vez de abrir um pool novo —
+  // nao chamar com esse parametro fora daqui.
+  constructor(existingSql?: postgres.Sql) {
     super();
-    this.sql = postgres(ConfigDb.getDb(), {
+    this.queryTimeoutMs = ConfigDb.getQueryTimeoutMs();
+    // TENTATIVA DE statement_timeout VIA PARAMETRO DE STARTUP FALHOU: o
+    // acesso deste projeto ao Postgres passa pelo Supavisor em modo
+    // transaction pooling (porta 6543, DIRECT_URL) — esse pooler rejeita
+    // "statement_timeout" como parametro de startup ("unsupported startup
+    // parameter"), confirmado rodando contra o banco real. A forma correta
+    // de configurar isso aqui e' `ALTER ROLE <role> SET statement_timeout =
+    // <ConfigDb.getStatementTimeoutMs()>` uma vez no banco — fica gravado no
+    // catalogo (pg_db_role_setting) e se aplica sozinho toda vez que a role
+    // autentica, independente de pooler, sem precisar de negociacao de
+    // startup por conexao. Isso e' uma mudanca de banco, nao de codigo — nao
+    // rodei, fica registrado como pendente (ver relatorio da fatia).
+    // Ate isso ser feito, so o timeout do lado do CLIENTE abaixo protege —
+    // e ele nao libera a conexao, so faz quem chamou desistir de esperar.
+    this.sql = existingSql ?? postgres(ConfigDb.getDb(), {
       ssl: { rejectUnauthorized: false },
       connect_timeout: 10,
       max: POOL_MAX_CONNECTIONS,
@@ -26,13 +50,24 @@ export class PostgresDataAccess extends DataAccessPort {
   private readonly retryableConnectionErrorCodes = ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'CONNECT_TIMEOUT'];
   private readonly maxConnectionAttempts = 3;
 
+  // IMPORTANTE — o que isso resolve e o que NAO resolve:
+  // withTimeout aqui faz QUEM CHAMOU desistir de esperar apos queryTimeoutMs
+  // — evita uma requisicao HTTP travar pra sempre. Isso NAO cancela a query
+  // nem libera a conexao do pool: ela continua rodando (ou presa esperando
+  // rede) ate terminar por conta propria. Quem efetivamente mataria a query
+  // e liberaria a conexao seria o `statement_timeout` do SERVIDOR — mas essa
+  // protecao NAO esta ativa hoje (ver comentario no construtor: o pooler de
+  // transacao do Supabase rejeita configurar isso por conexao). Ate isso ser
+  // resolvido (via ALTER ROLE, pendente), varias queries fugitivas
+  // simultaneas ainda esgotam o pool de 10 conexoes mesmo com este timeout
+  // do cliente ativo — ele so protege quem esta esperando, nao o pool.
   private async executeQuery<T>(callback: (sql: postgres.Sql) => Promise<T>): Promise<T> {
     for (let attempt = 1; attempt <= this.maxConnectionAttempts; attempt++) {
       try {
-        return await callback(this.sql);
+        return await withTimeout(callback(this.sql), this.queryTimeoutMs, 'postgres query');
       } catch (error) {
         if (!this.isRetryableConnectionError(error) || attempt === this.maxConnectionAttempts) {
-          throw error;
+          throw this.translateKnownPostgresError(error);
         }
         await this.wait(attempt * 300);
       }
@@ -43,6 +78,23 @@ export class PostgresDataAccess extends DataAccessPort {
   private isRetryableConnectionError(error: unknown): boolean {
     const code = (error as { code?: string })?.code;
     return typeof code === 'string' && this.retryableConnectionErrorCodes.includes(code);
+  }
+
+  // Traduz erros do DRIVER (identificados por codigo real do protocolo, nunca
+  // por mensagem) pra erros de dominio que o HttpErrorMapper sabe responder.
+  // Ponto unico — todo INSERT/UPDATE passa por executeQuery, entao qualquer
+  // violacao de unique constraint em qualquer tabela cai aqui, sem precisar
+  // de tratamento por chamador. Mensagem generica de proposito: o detalhe
+  // especifico (ex.: "CPF ja cadastrado em outra conta") continua vindo da
+  // checagem otimista na use case, quando ela existe — isso aqui e' so a
+  // rede de seguranca pra quando duas escritas concorrentes furam a
+  // checagem otimista e o indice unico do banco e' quem realmente decide.
+  private translateKnownPostgresError(error: unknown): unknown {
+    const code = (error as { code?: string })?.code;
+    if (code === UNIQUE_VIOLATION_CODE) {
+      return new ConflictError('Já existe um registro com esses dados.');
+    }
+    return error;
   }
 
   private wait(ms: number): Promise<void> {
@@ -151,5 +203,45 @@ private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
       `;
       return result.count > 0;
     });
+  }
+
+  async updateIfEqual<T extends object>(
+    collectionName: string,
+    id: string,
+    field: string,
+    expectedValue: unknown,
+    data: Partial<T>
+  ): Promise<boolean> {
+    return this.executeQuery(async (sql) => {
+      const result = await sql`
+        UPDATE ${sql(collectionName)}
+        SET ${sql(data as Record<string, any>)}
+        WHERE id = ${id} AND ${sql(field)} = ${expectedValue as any} AND deleted_at IS NULL
+      `;
+      return result.count > 0;
+    });
+  }
+
+  async incrementField(collectionName: string, id: string, field: string, amount: number): Promise<void> {
+    await this.executeQuery(async (sql) => {
+      await sql`
+        UPDATE ${sql(collectionName)}
+        SET ${sql(field)} = ${sql(field)} + ${amount}
+        WHERE id = ${id} AND deleted_at IS NULL
+      `;
+    });
+  }
+
+  async transaction<T>(callback: (tx: DataAccessPort) => Promise<T>): Promise<T> {
+    // sql.begin() tipa o retorno como UnwrapPromiseArray<T> (desembrulha caso
+    // T seja um array de promises) — nao se aplica aqui, T nunca e' array
+    // nesse uso; o cast so alinha o tipo, nao muda o valor em runtime.
+    return this.sql.begin(async (txSql) => {
+      // TransactionSql e Sql sao interfaces irmas (as duas estendem ISql) —
+      // nominalmente diferentes no TS, mas identicas em tudo que essa classe
+      // usa (tagged template + sql() como helper de identificador).
+      const txDataAccess = new PostgresDataAccess(txSql as unknown as postgres.Sql);
+      return callback(txDataAccess);
+    }) as Promise<T>;
   }
 }

@@ -45,7 +45,7 @@ export class OrderModule {
         const cartRepository: RepositoryPort<Cart> = new CartRepository(db);
         const cartItemRepository: RepositoryPort<CartItem> = new CartItemRepository(db);
 
-        const processPaymentWebhook = new ProcessPaymentWebhook(orderRepository, productRepository, paymentGateway);
+        const processPaymentWebhook = new ProcessPaymentWebhook(orderRepository, productRepository, paymentGateway, db);
 
         this.controller = new OrderController(
             new CheckoutOrder(

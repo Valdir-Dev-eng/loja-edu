@@ -63,6 +63,19 @@ export class MelhorEnvioConnectionRepository extends RepositoryPort<MelhorEnvioC
         return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
     }
 
+    async updateIfEqual(
+        id: string,
+        field: keyof MelhorEnvioConnection & string,
+        expectedValue: unknown,
+        data: Partial<MelhorEnvioConnection>
+    ): Promise<boolean> {
+        return this.dataAccess.updateIfEqual(this.collectionName, id, field, expectedValue, this.toColumnQuery(data));
+    }
+
+    async incrementField(id: string, field: keyof MelhorEnvioConnection & string, amount: number): Promise<void> {
+        await this.dataAccess.incrementField(this.collectionName, id, field, amount);
+    }
+
     private toColumnQuery(entity: Partial<MelhorEnvioConnection>): Record<string, unknown> {
         const columns: Record<string, unknown> = {};
         if (entity.id !== undefined) columns.id = entity.id;

@@ -54,6 +54,14 @@ export class CartRepository extends RepositoryPort<Cart> {
         return this.dataAccess.decrementIfSufficient(this.collectionName, id, field, amount);
     }
 
+    async updateIfEqual(id: string, field: keyof Cart & string, expectedValue: unknown, data: Partial<Cart>): Promise<boolean> {
+        return this.dataAccess.updateIfEqual(this.collectionName, id, field, expectedValue, this.toColumnQuery(data));
+    }
+
+    async incrementField(id: string, field: keyof Cart & string, amount: number): Promise<void> {
+        await this.dataAccess.incrementField(this.collectionName, id, field, amount);
+    }
+
     private toColumns(entity: Cart): Record<string, unknown> {
         return {
             id: entity.id,

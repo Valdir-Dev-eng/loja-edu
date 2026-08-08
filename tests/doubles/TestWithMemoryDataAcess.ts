@@ -6,6 +6,7 @@ export class TestWithMemoryDataAcess extends DataAccessPort {
     private readonly tables = new Map<string, Row[]>();
     private readonly maxDelayMs: number;
     private readonly callCounts = new Map<string, number>();
+    private readonly pendingFailures = new Map<string, number>();
 
     constructor(maxDelayMs = 3) {
         super();
@@ -16,9 +17,25 @@ export class TestWithMemoryDataAcess extends DataAccessPort {
         return this.callCounts.get(`${method}:${collectionName}`) ?? 0;
     }
 
+    // Injeta falha determinística nas próximas `times` chamadas de `method`
+    // sobre `collectionName` — pra testar caminho de rollback sem depender
+    // de uma condição de corrida acontecer sozinha.
+    failNextCallTo(collectionName: string, method: string, times = 1): void {
+        this.pendingFailures.set(`${method}:${collectionName}`, times);
+    }
+
     private countCall(collectionName: string, method: string): void {
         const key = `${method}:${collectionName}`;
         this.callCounts.set(key, (this.callCounts.get(key) ?? 0) + 1);
+    }
+
+    private maybeFail(collectionName: string, method: string): void {
+        const key = `${method}:${collectionName}`;
+        const remaining = this.pendingFailures.get(key);
+        if (remaining && remaining > 0) {
+            this.pendingFailures.set(key, remaining - 1);
+            throw new Error(`Falha simulada injetada em ${key}`);
+        }
     }
 
     private table(collectionName: string): Row[] {
@@ -154,5 +171,56 @@ export class TestWithMemoryDataAcess extends DataAccessPort {
         row[field] -= amount;
         row.updated_at = new Date().toISOString();
         return true;
+    }
+
+    async updateIfEqual<T extends object>(
+        collectionName: string,
+        id: string,
+        field: string,
+        expectedValue: unknown,
+        data: Partial<T>
+    ): Promise<boolean> {
+        this.countCall(collectionName, "updateIfEqual");
+        await this.yieldToEventLoop();
+        // Mesma disciplina do decrementIfSufficient: zero await entre a
+        // checagem do valor esperado e a escrita — atomico como um
+        // UPDATE...WHERE real, nao um CAS otimista que pode perder a corrida.
+        const row = this.table(collectionName).find((candidate) => this.notDeleted(candidate) && candidate.id === id);
+        if (!row || row[field] !== expectedValue) {
+            return false;
+        }
+        Object.assign(row, data, { updated_at: new Date().toISOString() });
+        return true;
+    }
+
+    async incrementField(collectionName: string, id: string, field: string, amount: number): Promise<void> {
+        this.countCall(collectionName, "incrementField");
+        this.maybeFail(collectionName, "incrementField");
+        await this.yieldToEventLoop();
+        const row = this.table(collectionName).find((candidate) => this.notDeleted(candidate) && candidate.id === id);
+        if (row) {
+            row[field] = (row[field] ?? 0) + amount;
+            row.updated_at = new Date().toISOString();
+        }
+    }
+
+    async transaction<T>(callback: (tx: DataAccessPort) => Promise<T>): Promise<T> {
+        // Snapshot raso das tabelas antes de rodar o callback — se ele
+        // lancar, restaura tudo, simulando o rollback real do sql.begin()
+        // do Postgres. O "tx" aqui e' a propria instancia: nao ha isolamento
+        // de conexao pra fingir num fake single-threaded.
+        const snapshot = new Map<string, Row[]>();
+        for (const [name, rows] of this.tables) {
+            snapshot.set(name, rows.map((row) => ({ ...row })));
+        }
+        try {
+            return await callback(this);
+        } catch (error) {
+            this.tables.clear();
+            for (const [name, rows] of snapshot) {
+                this.tables.set(name, rows);
+            }
+            throw error;
+        }
     }
 }

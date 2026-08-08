@@ -64,6 +64,14 @@ export class AddressRepository extends RepositoryPort<Address> {
         return this.dataAccess.decrementIfSufficient("enderecos", id, field, amount);
     }
 
+    async updateIfEqual(id: string, field: keyof Address & string, expectedValue: unknown, data: Partial<Address>): Promise<boolean> {
+        return this.dataAccess.updateIfEqual("enderecos", id, field, expectedValue, this.toColumnQuery(data));
+    }
+
+    async incrementField(id: string, field: keyof Address & string, amount: number): Promise<void> {
+        await this.dataAccess.incrementField("enderecos", id, field, amount);
+    }
+
     private toColumnQuery(entity: Partial<Address>): Record<string, unknown> {
         const columns: Record<string, unknown> = {};
         if (entity.id !== undefined) columns.id = entity.id;
