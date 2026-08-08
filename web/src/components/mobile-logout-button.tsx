@@ -1,12 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
+import { useSession } from "@/hooks/use-session";
 
 export function MobileLogoutButton() {
-  const router = useRouter();
+  const { clear } = useSession();
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function handleLogout() {
@@ -16,7 +16,8 @@ export function MobileLogoutButton() {
     } catch {
       // mesmo se a chamada falhar, o cookie de sessao expira sozinho.
     } finally {
-      router.refresh();
+      clear();
+      setLoggingOut(false);
     }
   }
 

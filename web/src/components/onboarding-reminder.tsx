@@ -3,16 +3,18 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useSession } from "@/hooks/use-session";
 
 const EXEMPT_PATH_PREFIXES = ["/onboarding", "/login"];
 
-// O status de onboarding vem pronto do servidor (getSessionUser, resolvido no
-// SiteHeader) — este componente nao busca nada sozinho, so decide se mostra
-// o aviso. Isso elimina a chamada repetida a /auth/me que existia antes.
-export function OnboardingReminder({ pending }: { pending: boolean }) {
+// Le do SessionProvider (useSession) em vez de buscar sozinho — reaproveita
+// a unica chamada a /auth/me compartilhada pelo header inteiro.
+export function OnboardingReminder() {
   const pathname = usePathname();
+  const { user } = useSession();
   const { notify } = useNotifications();
   const alreadyNotifiedRef = useRef(false);
+  const pending = user !== null && !user.onboardingCompleted;
 
   useEffect(() => {
     if (!pending || alreadyNotifiedRef.current) return;

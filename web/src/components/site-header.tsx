@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutDashboard, Menu, Search, ShoppingCart, User, UserRound } from "lucide-react";
+import { Menu, Search, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -11,78 +11,14 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { CartBadge } from "@/components/cart-badge";
-import { AccountMenu } from "@/components/account-menu";
-import { MobileLogoutButton } from "@/components/mobile-logout-button";
+import { DesktopAccountSlot, MobileAccountLinks } from "@/components/account-slot";
 import { OnboardingReminder } from "@/components/onboarding-reminder";
-import { getSessionUser } from "@/lib/session";
-import type { UserOutput } from "@/lib/api-types";
 
 const NAV_LINKS = [
   { href: "/produtos", label: "Todos os produtos" },
   { href: "/pedidos", label: "Meus pedidos" },
   { href: "/enderecos", label: "Meus endereços" },
 ];
-
-function GuestLoginButton({ size }: { size?: "lg" }) {
-  return (
-    <Button variant="outline" size={size} asChild>
-      <Link href="/login">
-        <User className="size-4" />
-        Entrar
-      </Link>
-    </Button>
-  );
-}
-
-// Fallback do Suspense enquanto getSessionUser() resolve — nao pode ser o
-// GuestLoginButton, senao todo usuario logado ve o botao "Entrar" piscar
-// antes de virar o menu de conta a cada carregamento de pagina (inclusive
-// logo apos o login, quando e mais visivel). Um placeholder neutro deixa
-// a transicao parecer "carregando", nao "trocou de estado errado".
-function AccountSlotSkeleton({ size }: { size?: "lg" }) {
-  return <div className={`animate-pulse rounded-md bg-secondary ${size === "lg" ? "h-9 w-full" : "h-8 w-24"}`} />;
-}
-
-// Resolvido no servidor (getSessionUser le o cookie httpOnly direto) — o
-// navegador nunca faz uma chamada a /auth/me pra decidir o que mostrar aqui.
-// Envolvido em Suspense pra so essa fatia do header ficar "dinamica" (Cache
-// Components); o resto da pagina continua estatico/cacheavel normalmente.
-async function DesktopAccountSlot() {
-  const user = await getSessionUser();
-  return user ? <AccountMenu user={user} /> : <GuestLoginButton />;
-}
-
-async function MobileAccountLinks() {
-  const user = await getSessionUser();
-  if (!user) {
-    return (
-      <Button asChild size="lg" className="mt-auto">
-        <Link href="/login">
-          <User className="size-4" />
-          Entrar
-        </Link>
-      </Button>
-    );
-  }
-  return (
-    <div className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
-      <Link href="/perfil" className="flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground active:bg-secondary">
-        <UserRound className="size-4" /> Meu perfil
-      </Link>
-      {user.isAdmin && (
-        <Link href="/app" className="flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground active:bg-secondary">
-          <LayoutDashboard className="size-4" /> Painel admin
-        </Link>
-      )}
-      <MobileLogoutButton />
-    </div>
-  );
-}
-
-async function OnboardingSlot() {
-  const user: UserOutput | null = await getSessionUser();
-  return <OnboardingReminder pending={user !== null && !user.onboardingCompleted} />;
-}
 
 export function SiteHeader() {
   return (
@@ -122,9 +58,7 @@ export function SiteHeader() {
         </form>
 
         <nav className="ml-auto hidden items-center gap-2 lg:flex">
-          <Suspense fallback={<AccountSlotSkeleton />}>
-            <DesktopAccountSlot />
-          </Suspense>
+          <DesktopAccountSlot />
           <Button variant="outline" asChild className="relative">
             <Link href="/carrinho">
               <ShoppingCart className="size-4" />
@@ -179,16 +113,14 @@ export function SiteHeader() {
                 ))}
               </nav>
 
-              <Suspense fallback={<AccountSlotSkeleton size="lg" />}>
-                <MobileAccountLinks />
-              </Suspense>
+              <MobileAccountLinks />
             </SheetContent>
           </Sheet>
         </div>
       </div>
 
       <Suspense fallback={null}>
-        <OnboardingSlot />
+        <OnboardingReminder />
       </Suspense>
     </header>
   );
