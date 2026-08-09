@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { AuthenticateWithGoogle } from "../../../src/app/users/useCase/AuthenticateWithGoogle";
 import { User } from "../../../src/domain/entites/User";
-import { ForbiddenError } from "../../../src/domain/errors/ForbiddenError";
 import { UnauthorizedError } from "../../../src/domain/errors/UnauthorizedError";
 import { CachePort } from "../../../src/domain/database/CachePort";
 import { AuthTokenManager } from "../../../src/infra/security/AuthTokenManager";
@@ -94,13 +93,19 @@ describe("AuthenticateWithGoogle", () => {
         ).rejects.toThrow(UnauthorizedError);
     });
 
-    it("recusa autenticação de usuário com conta desativada", async () => {
+    it("reativa a conta soft-deletada em vez de criar outra com o mesmo e-mail", async () => {
         const deactivatedUser = User.build(context.createId, "joao@gmail.com", "joao");
+        deactivatedUser.completeOnboarding("João da Silva", 1, "52998224725");
         deactivatedUser.softDelete();
         await context.userRepository.save(deactivatedUser);
         context.oauthProvider.authorizeNextExchangeWithEmail("joao@gmail.com");
 
-        await expect(context.useCase.execute({ code: "valid-code", redirectUri: "https://example.test/auth/google/callback" })).rejects.toThrow(ForbiddenError);
-        await expect(context.useCase.execute({ code: "valid-code", redirectUri: "https://example.test/auth/google/callback" })).rejects.toThrow("Conta desativada.");
+        const output = await context.useCase.execute({ code: "valid-code", redirectUri: "https://example.test/auth/google/callback" });
+
+        expect(output.userId).toBe(deactivatedUser.id);
+        expect(output.onboardingPending).toBe(false);
+        const savedUsers = await context.userRepository.findAll();
+        expect(savedUsers).toHaveLength(1);
+        expect(savedUsers[0].deleted_at).toBeNull();
     });
 });

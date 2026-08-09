@@ -29,6 +29,11 @@ export class ProductImageRepository extends RepositoryPort<ProductImage> {
         return data ? this.mapToEntity(data) : null;
     }
 
+    async findByIncludingDeleted(query: FilterQuery<ProductImage>): Promise<ProductImage | null> {
+        const data = await this.dataAccess.findOneIncludingDeleted<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
+        return data ? this.mapToEntity(data) : null;
+    }
+
     async findMany(query: FilterQuery<ProductImage>): Promise<ProductImage[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
         return rows.map((row) => this.mapToEntity(row));

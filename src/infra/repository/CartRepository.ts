@@ -23,6 +23,11 @@ export class CartRepository extends RepositoryPort<Cart> {
         return data ? this.mapToEntity(data) : null;
     }
 
+    async findByIncludingDeleted(query: FilterQuery<Cart>): Promise<Cart | null> {
+        const data = await this.dataAccess.findOneIncludingDeleted<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
+        return data ? this.mapToEntity(data) : null;
+    }
+
     async findMany(query: FilterQuery<Cart>): Promise<Cart[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
         return rows.map((row) => this.mapToEntity(row));

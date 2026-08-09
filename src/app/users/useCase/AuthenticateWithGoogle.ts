@@ -1,5 +1,4 @@
 import { User } from "../../../domain/entites/User";
-import { ForbiddenError } from "../../../domain/errors/ForbiddenError";
 import { CreateId } from "../../../domain/interface/CreateId";
 import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
 import { OAuthProviderPort } from "../../../domain/security/OAuthProviderPort";
@@ -24,10 +23,11 @@ export class AuthenticateWithGoogle {
     }
 
     private async findOrCreateUser(verifiedEmail: string): Promise<User> {
-        const existingUser = await this.userRepository.findBy({ email: verifiedEmail });
+        const existingUser = await this.userRepository.findByIncludingDeleted({ email: verifiedEmail });
         if (existingUser) {
             if (existingUser.deleted_at) {
-                throw new ForbiddenError("Conta desativada.");
+                existingUser.reactivate();
+                await this.userRepository.update(existingUser.id, { deleted_at: existingUser.deleted_at });
             }
             return existingUser;
         }

@@ -28,6 +28,11 @@ export class MelhorEnvioConnectionRepository extends RepositoryPort<MelhorEnvioC
         return data ? this.mapToEntity(data) : null;
     }
 
+    async findByIncludingDeleted(query: FilterQuery<MelhorEnvioConnection>): Promise<MelhorEnvioConnection | null> {
+        const data = await this.dataAccess.findOneIncludingDeleted<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
+        return data ? this.mapToEntity(data) : null;
+    }
+
     async findMany(query: FilterQuery<MelhorEnvioConnection>): Promise<MelhorEnvioConnection[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
         return rows.map((row) => this.mapToEntity(row));

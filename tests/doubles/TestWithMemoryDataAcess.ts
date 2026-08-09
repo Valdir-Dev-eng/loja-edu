@@ -119,6 +119,13 @@ export class TestWithMemoryDataAcess extends DataAccessPort {
         return result ?? null;
     }
 
+    async findOneIncludingDeleted<T extends object>(collectionName: string, query: Partial<T>): Promise<T | undefined> {
+        this.countCall(collectionName, "findOneIncludingDeleted");
+        await this.yieldToEventLoop();
+        const row = this.table(collectionName).find((candidate) => this.matches(candidate, query as Row));
+        return row ? this.project<T>(row) : undefined;
+    }
+
     async create<T extends object>(collectionName: string, data: Partial<T>): Promise<string | number | undefined> {
         this.countCall(collectionName, "create");
         await this.yieldToEventLoop();

@@ -1,7 +1,7 @@
 import { DataAccessPort } from "../../src/domain/database/DataAcess";
 import { FilterQuery, RepositoryPort } from "../../src/domain/repository/RepositoryPort";
 
-export class InMemoryRepository<T extends { id: string }> extends RepositoryPort<T> {
+export class InMemoryRepository<T extends { id: string; deleted_at: Date | null }> extends RepositoryPort<T> {
     private items: Map<string, T> = new Map();
 
     constructor() {
@@ -43,12 +43,17 @@ export class InMemoryRepository<T extends { id: string }> extends RepositoryPort
     }
 
     async findBy(query: FilterQuery<T>): Promise<T | null> {
+        const found = Array.from(this.items.values()).find((item) => this.notDeleted(item) && this.matches(item, query));
+        return found ?? null;
+    }
+
+    async findByIncludingDeleted(query: FilterQuery<T>): Promise<T | null> {
         const found = Array.from(this.items.values()).find((item) => this.matches(item, query));
         return found ?? null;
     }
 
     async findMany(query: FilterQuery<T>): Promise<T[]> {
-        return Array.from(this.items.values()).filter((item) => this.matches(item, query));
+        return Array.from(this.items.values()).filter((item) => this.notDeleted(item) && this.matches(item, query));
     }
 
     async exists(filter: Partial<T>): Promise<boolean> {
@@ -97,5 +102,9 @@ export class InMemoryRepository<T extends { id: string }> extends RepositoryPort
 
     private matches(item: T, query: Partial<T>): boolean {
         return Object.entries(query).every(([key, value]) => (item as Record<string, unknown>)[key] === value);
+    }
+
+    private notDeleted(item: T): boolean {
+        return item.deleted_at === null;
     }
 }

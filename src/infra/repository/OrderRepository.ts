@@ -48,6 +48,14 @@ export class OrderRepository extends RepositoryPort<Order> {
         return data ? await this.hydrate(data) : null;
     }
 
+    async findByIncludingDeleted(query: FilterQuery<Order>): Promise<Order | null> {
+        const data = await this.dataAccess.findOneIncludingDeleted<Record<string, unknown>>(
+            this.collectionName,
+            this.toColumnQuery(query)
+        );
+        return data ? await this.hydrate(data) : null;
+    }
+
     async update(id: string, entity: Partial<Order>): Promise<void> {
         await this.dataAccess.update(this.collectionName, { id } as never, this.toColumnQuery(entity));
     }

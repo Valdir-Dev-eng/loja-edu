@@ -27,6 +27,11 @@ export class CategoryRepository extends RepositoryPort<Category> {
         return data ? this.mapToEntity(data) : null;
     }
 
+    async findByIncludingDeleted(query: FilterQuery<Category>): Promise<Category | null> {
+        const data = await this.dataAccess.findOneIncludingDeleted<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
+        return data ? this.mapToEntity(data) : null;
+    }
+
     async findMany(query: FilterQuery<Category>): Promise<Category[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>(this.collectionName, this.toColumnQuery(query));
         return rows.map((row) => this.mapToEntity(row));

@@ -15,6 +15,7 @@ const UNIQUE_VIOLATION_CODE = '23505';
 // constraint fora desse mapa cai no generico abaixo, nunca quebra.
 const UNIQUE_VIOLATION_MESSAGES: Record<string, string> = {
   users_document_unique_idx: 'Este CPF/CNPJ já está cadastrado em outra conta.',
+  users_email_unique: 'Este e-mail já está cadastrado.',
 };
 const GENERIC_UNIQUE_VIOLATION_MESSAGE = 'Já existe um registro com esses dados.';
 
@@ -114,12 +115,24 @@ export class PostgresDataAccess extends DataAccessPort {
 
 private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
   const keys = Object.keys(query);
-  
+
   if (keys.length === 0) return sql`deleted_at IS NULL`;
 
   const conditions = keys.map(key => sql`${sql(key)} = ${query[key]}`);
   conditions.push(sql`deleted_at IS NULL`);
-  
+
+  return conditions.reduce((acc, curr) => sql`${acc} AND ${curr}`);
+}
+
+// Mesma montagem de WHERE, mas sem o `deleted_at IS NULL` implicito — uso
+// restrito a fluxos que precisam enxergar linha soft-deletada de proposito
+// (ex.: reativar conta em vez de duplicar), nunca pra leitura/listagem comum.
+private buildWhereIncludingDeleted(sql: postgres.Sql, query: Record<string, any>) {
+  const keys = Object.keys(query);
+
+  if (keys.length === 0) return sql`TRUE`;
+
+  const conditions = keys.map(key => sql`${sql(key)} = ${query[key]}`);
   return conditions.reduce((acc, curr) => sql`${acc} AND ${curr}`);
 }
 
@@ -167,6 +180,17 @@ private buildWhere(sql: postgres.Sql, query: Record<string, any>) {
       const [row] = await sql<T[]>`
         SELECT * FROM ${sql(collectionName)} 
         WHERE ${this.buildWhere(sql, query as any)} 
+        LIMIT 1
+      `;
+      return row;
+    });
+  }
+
+  async findOneIncludingDeleted<T extends object>(collectionName: string, query: Partial<T>): Promise<T | undefined> {
+    return this.executeQuery(async (sql) => {
+      const [row] = await sql<T[]>`
+        SELECT * FROM ${sql(collectionName)}
+        WHERE ${this.buildWhereIncludingDeleted(sql, query as any)}
         LIMIT 1
       `;
       return row;

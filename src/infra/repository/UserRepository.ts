@@ -24,6 +24,11 @@ export class UserRepository extends RepositoryPort<User> {
         return data ? this.mapToEntity(data) : null;
     }
 
+    async findByIncludingDeleted(query: FilterQuery<User>): Promise<User | null> {
+        const data = await this.dataAccess.findOneIncludingDeleted<Record<string, unknown>>("users", this.toColumnQuery(query));
+        return data ? this.mapToEntity(data) : null;
+    }
+
     async findMany(query: FilterQuery<User>): Promise<User[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>("users", this.toColumnQuery(query));
         return rows.map((row) => this.mapToEntity(row));
@@ -77,6 +82,7 @@ export class UserRepository extends RepositoryPort<User> {
         if (entity.role !== undefined) columns.role = entity.role;
         if (entity.onboardingCompleted !== undefined) columns.onboarding_completed = entity.onboardingCompleted;
         if (entity.document !== undefined) columns.document = entity.document;
+        if (entity.deleted_at !== undefined) columns.deleted_at = entity.deleted_at;
         return columns;
     }
 

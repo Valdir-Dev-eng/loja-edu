@@ -28,6 +28,11 @@ export class AddressRepository extends RepositoryPort<Address> {
         return data ? this.mapToEntity(data) : null;
     }
 
+    async findByIncludingDeleted(query: FilterQuery<Address>): Promise<Address | null> {
+        const data = await this.dataAccess.findOneIncludingDeleted<Record<string, unknown>>("enderecos", this.toColumnQuery(query));
+        return data ? this.mapToEntity(data) : null;
+    }
+
     async findMany(query: FilterQuery<Address>): Promise<Address[]> {
         const rows = await this.dataAccess.findMany<Record<string, unknown>>("enderecos", this.toColumnQuery(query));
         return rows.map((row) => this.mapToEntity(row));

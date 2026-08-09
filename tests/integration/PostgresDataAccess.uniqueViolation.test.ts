@@ -1,8 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ConflictError } from "../../src/domain/errors/ConflictError";
 import { User } from "../../src/domain/entites/User";
 import { PostgresDataAccess } from "../../src/infra/database/PostgresDataAccess";
 import { UserRepository } from "../../src/infra/repository/UserRepository";
+import { PostgresTestCleanup } from "./support/PostgresTestCleanup";
+
+const TEST_USER_EMAIL_PATTERN = "%@teste.com";
 
 // Prova real (Postgres do projeto, não Fake) de um bug visto em produção:
 // duas escritas concorrentes furam a checagem otimista de CompleteOnboarding
@@ -17,16 +20,17 @@ describe("PostgresDataAccess — violação de unique constraint vira ConflictEr
     let firstUserId: string | null = null;
     let secondUserId: string | null = null;
 
+    beforeAll(async () => {
+        // Autocura: se uma execução anterior deste arquivo foi interrompida
+        // antes do afterEach rodar, o lixo (email sintético, nunca usado por
+        // conta real) fica pra sempre. Toda nova execução varre e remove
+        // qualquer resíduo antes de criar dado novo — o banco fica limpo sem
+        // precisar de intervenção manual.
+        await PostgresTestCleanup.purgeStaleUsersByEmailPattern(TEST_USER_EMAIL_PATTERN);
+    });
+
     afterEach(async () => {
-        // O índice é parcial (WHERE document IS NOT NULL) e não filtra por
-        // deleted_at — soft-delete sozinho não libera o valor. Zera o
-        // document antes de remover, senão o próximo run deste teste
-        // colide com o lixo do run anterior.
-        for (const id of [firstUserId, secondUserId]) {
-            if (!id) continue;
-            await userRepository.update(id, { document: null as unknown as string });
-            await userRepository.delete(id);
-        }
+        await PostgresTestCleanup.hardDeleteUsersByIds([firstUserId, secondUserId]);
         firstUserId = null;
         secondUserId = null;
     });
@@ -58,7 +62,7 @@ describe("PostgresDataAccess — violação de unique constraint vira ConflictEr
         expect((caughtError as Error).message).toBe("Este CPF/CNPJ já está cadastrado em outra conta.");
     });
 
-    it("constraint sem mensagem mapeada (ex.: users_email_unique) cai no genérico, não quebra", async () => {
+    it("e-mail duplicado (users_email_unique) vira ConflictError com mensagem amigável", async () => {
         db = new PostgresDataAccess();
         userRepository = new UserRepository(db);
         const suffix = Math.random().toString(36).slice(2, 8);
@@ -69,6 +73,30 @@ describe("PostgresDataAccess — violação de unique constraint vira ConflictEr
         firstUserId = firstUser.id;
 
         const secondUser = User.build(() => crypto.randomUUID(), sharedEmail, `uve2${suffix}`);
+        secondUserId = secondUser.id;
+
+        let caughtError: unknown;
+        try {
+            await userRepository.save(secondUser);
+        } catch (error) {
+            caughtError = error;
+        }
+
+        expect(caughtError).toBeInstanceOf(ConflictError);
+        expect((caughtError as Error).message).toBe("Este e-mail já está cadastrado.");
+    });
+
+    it("constraint sem mensagem mapeada (ex.: users_username_unique_active) cai no genérico, não quebra", async () => {
+        db = new PostgresDataAccess();
+        userRepository = new UserRepository(db);
+        const suffix = Math.random().toString(36).slice(2, 8);
+        const sharedUsername = `uvu${suffix}`;
+
+        const firstUser = User.build(() => crypto.randomUUID(), `unique-violation-username-1-${suffix}@teste.com`, sharedUsername);
+        await userRepository.save(firstUser);
+        firstUserId = firstUser.id;
+
+        const secondUser = User.build(() => crypto.randomUUID(), `unique-violation-username-2-${suffix}@teste.com`, sharedUsername);
         secondUserId = secondUser.id;
 
         let caughtError: unknown;

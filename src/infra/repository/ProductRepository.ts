@@ -26,6 +26,12 @@ export class ProductRepository extends RepositoryPort<Product> {
     return this.mapToEntity(data);
   }
 
+  async findByIncludingDeleted(query: FilterQuery<Product>): Promise<Product | null> {
+    const data = await this.dataAccess.findOneIncludingDeleted<any>(this.collectionName, this.toColumnQuery(query));
+    if (!data) return null;
+    return this.mapToEntity(data);
+  }
+
   async findMany(query: FilterQuery<Product>): Promise<Product[]> {
     const dataList = await this.dataAccess.findMany<any>(this.collectionName, this.toColumnQuery(query));
     return dataList.map(data => this.mapToEntity(data));

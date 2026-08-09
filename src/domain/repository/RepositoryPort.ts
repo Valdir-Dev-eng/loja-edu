@@ -13,6 +13,11 @@ export abstract class RepositoryPort<T> {
   abstract findAll(): Promise<T[]>;
   abstract update(id: string, entity: Partial<T>): Promise<void>;
   abstract findBy(query: FilterQuery<T>): Promise<T | null>;
+
+  // Mesma busca de findBy, mas enxerga linha soft-deletada — uso restrito a
+  // fluxos que precisam decidir entre reativar um registro existente ou
+  // criar um novo (ex.: AuthenticateWithGoogle), nunca pra leitura comum.
+  abstract findByIncludingDeleted(query: FilterQuery<T>): Promise<T | null>;
   abstract findMany(query: FilterQuery<T>): Promise<T[]>;
 
   abstract exists(filter: Partial<T>): Promise<boolean>;

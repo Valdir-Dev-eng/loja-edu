@@ -200,4 +200,22 @@ describe("User", () => {
             expect(() => user.softDelete()).toThrow("Usuário já está deletado.");
         });
     });
+
+    describe("reactivate", () => {
+        it("remove a marca de deletado de um usuário soft-deletado", () => {
+            const user = User.build(createId, "joao@gmail.com", "joao");
+            user.softDelete();
+
+            user.reactivate();
+
+            expect(user.deleted_at).toBeNull();
+        });
+
+        it("recusa reativar um usuário que já está ativo", () => {
+            const user = User.build(createId, "joao@gmail.com", "joao");
+
+            expect(() => user.reactivate()).toThrow(ConflictError);
+            expect(() => user.reactivate()).toThrow("Usuário já está ativo.");
+        });
+    });
 });

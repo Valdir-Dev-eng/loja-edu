@@ -93,4 +93,12 @@ export class User {
         }
         this._deleted_at = new Date();
     }
+
+    reactivate(): void {
+        if (!this._deleted_at) {
+            throw new ConflictError("Usuário já está ativo.");
+        }
+        this._deleted_at = null;
+        this.updated_at = new Date();
+    }
 }

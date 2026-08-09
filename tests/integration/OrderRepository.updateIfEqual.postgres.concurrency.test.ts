@@ -4,6 +4,7 @@ import { PostgresDataAccess } from "../../src/infra/database/PostgresDataAccess"
 import { AddressRepository } from "../../src/infra/repository/AddressRepository";
 import { OrderRepository } from "../../src/infra/repository/OrderRepository";
 import { ProductRepository } from "../../src/infra/repository/ProductRepository";
+import { PostgresTestCleanup } from "./support/PostgresTestCleanup";
 
 // PG_QUERY_TIMEOUT_MS default (3500ms) é dimensionado pra uma query NORMAL.
 // Este teste é atípico de propósito (10 conexões reais competindo pelo lock
@@ -41,10 +42,8 @@ describe("OrderRepository.updateIfEqual — prova de concorrência real (Postgre
     let createdOrderId: string | null = null;
 
     afterEach(async () => {
-        if (createdOrderId) {
-            await repo.delete(createdOrderId);
-            createdOrderId = null;
-        }
+        await PostgresTestCleanup.hardDeleteOrderByIds([createdOrderId]);
+        createdOrderId = null;
     });
 
     it("deixa exatamente um UPDATE concorrente vencer quando 10 conexões reais disputam a mesma linha", async () => {
