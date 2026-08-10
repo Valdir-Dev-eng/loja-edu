@@ -37,6 +37,8 @@ import { ShippingGatewayPort } from "../../domain/shipping/ShippingGatewayPort";
 import { MelhorEnvioAdapter } from "../shipping/MelhorEnvioAdapter";
 import { ShippingModule } from "./ShippingModule";
 import { CartModule } from "./CartModule";
+import { WebSocketNotifierPort } from "../../domain/realtime/WebSocketNotifierPort";
+import { WsOrderNotifierAdapter } from "../realtime/WsOrderNotifierAdapter";
 
 const CIRCUIT_BREAKER_FAILURE_THRESHOLD = 3;
 const CIRCUIT_BREAKER_HALF_OPEN_INTERVAL_MS = 15_000;
@@ -75,6 +77,7 @@ export class AppModule {
         this.serviceAuthToken = new ServiceAuthToken(this.di)
         this.server = this.di.getDependency(ServerPort)
         this.cache = this.di.getDependency(CachePort)
+        this.di.addDependency(new WsOrderNotifierAdapter(this.server.getHttpServer(), this.cache), WebSocketNotifierPort)
         const rateLimiter = this.di.getDependency<RateLimiterPort>(RateLimiterPort)
         const rateLimitMiddleware = new RateLimitMiddleware(rateLimiter, RateLimitRouteRules)
         this.server.useGlobalMiddleware(rateLimitMiddleware.handle)

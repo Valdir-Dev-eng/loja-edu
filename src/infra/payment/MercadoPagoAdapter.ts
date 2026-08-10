@@ -7,6 +7,7 @@ import {
     PaymentStatusResult,
     WebhookSignatureInput,
 } from "../../domain/payment/PaymentGatewayPort";
+import { PaymentNotFoundError } from "../../domain/payment/PaymentNotFoundError";
 import { ConfigMercadoPago, IMercadoPagoSecrets } from "../config/ConfigMercadoPago";
 import { createIdAdapter } from "../utils/createId";
 import { MercadoPagoOrderStatusMapper } from "./MercadoPagoOrderStatusMapper";
@@ -94,16 +95,23 @@ export class MercadoPagoAdapter extends PaymentGatewayPort {
         const response = await fetch(`${this.secrets.baseUrl}/v1/orders/${externalPaymentId}`, {
             headers: { Authorization: `Bearer ${this.secrets.accessToken}` },
         });
+        if (response.status === 404) {
+            throw new PaymentNotFoundError();
+        }
         if (!response.ok) {
             const responseBody = await response.text().catch(() => "");
             throw new Error(`Falha ao consultar pagamento no Mercado Pago (status ${response.status}): ${responseBody}`);
         }
         const order = (await response.json()) as MercadoPagoPaymentResponse;
+        const payment = order.transactions.payments[0];
         return {
             externalPaymentId: String(order.id),
             orderId: order.external_reference,
             status: MercadoPagoOrderStatusMapper.normalize(order.status, order.status_detail),
             paidAmountCents: Money.fromDecimalString(order.total_paid_amount),
+            qrCode: payment?.payment_method?.qr_code,
+            qrCodeBase64: payment?.payment_method?.qr_code_base64,
+            expiresAt: payment?.date_of_expiration ? new Date(payment.date_of_expiration) : undefined,
         };
     }
 

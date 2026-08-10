@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useOrderPaymentSocket } from "@/hooks/use-order-payment-socket";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { formatCentsToBRL } from "@/lib/money";
-import type { AddressOutput, CheckoutOrderOutput, PaymentStatusOutput, ShippingOption } from "@/lib/api-types";
+import type { AddressOutput, CheckoutOrderOutput, ShippingOption } from "@/lib/api-types";
 import { Button } from "@/components/ui/button";
 
-const PAYMENT_STATUS_POLL_INTERVAL_MS = 4000;
 const FINAL_ORDER_STATUSES = new Set(["PAID", "REJECTED", "EXPIRED", "CANCELLED", "REFUNDED", "CHARGEBACK"]);
 
 export function CheckoutClient() {
@@ -47,28 +47,20 @@ export function CheckoutClient() {
     if (!selectedAddressId) setSelectedAddressId(addresses[0].id);
   }, [addresses, selectedAddressId]);
 
-  useEffect(() => {
-    if (!order || FINAL_ORDER_STATUSES.has(paymentStatus ?? "")) return;
-    const interval = setInterval(async () => {
-      try {
-        const status = await apiClient.get<PaymentStatusOutput>(`/order/${order.orderId}/payment-status`);
-        setPaymentStatus(status.status);
-        if (status.status === "PAID") {
-          clear();
-          notify({ type: "success", title: "Pagamento aprovado", message: "Seu pedido foi confirmado." });
-        } else if (FINAL_ORDER_STATUSES.has(status.status)) {
-          notify({
-            type: "error",
-            title: "Pagamento não concluído",
-            message: `Status: ${status.status}. Tente novamente a partir do carrinho.`,
-          });
-        }
-      } catch {
-        return;
-      }
-    }, PAYMENT_STATUS_POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [order, paymentStatus, clear, notify]);
+  useOrderPaymentSocket(!!order && !FINAL_ORDER_STATUSES.has(paymentStatus ?? ""), (update) => {
+    if (!order || update.orderId !== order.orderId) return;
+    setPaymentStatus(update.status);
+    if (update.status === "PAID") {
+      clear();
+      notify({ type: "success", title: "Pagamento aprovado", message: "Seu pedido foi confirmado." });
+    } else if (FINAL_ORDER_STATUSES.has(update.status)) {
+      notify({
+        type: "error",
+        title: "Pagamento não concluído",
+        message: `Status: ${update.status}. Tente novamente a partir do carrinho.`,
+      });
+    }
+  });
 
   const selectedAddress = useMemo(
     () => addresses?.find((address) => address.id === selectedAddressId) ?? null,

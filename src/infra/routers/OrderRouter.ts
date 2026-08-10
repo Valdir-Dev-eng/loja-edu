@@ -32,6 +32,7 @@ export class OrderRouter {
             this.authRouter.requireSession,
             this.paymentStatus
         );
+        this.server.addRouter("get", "/order/realtime-ticket", this.authRouter.requireSession, this.realtimeTicket);
     }
 
     private validateCheckoutInput: middleWare = async (req, res, next) => {
@@ -82,6 +83,17 @@ export class OrderRouter {
             const { authenticatedUser } = req as IRequest<any, any, any, SessionInjection>;
             const { id } = req.params;
             const result = await this.controller.paymentStatus(id, authenticatedUser.id);
+            res.json(result);
+        } catch (error) {
+            const { status, body } = HttpErrorMapper.toHttp(error);
+            res.status(status).json(body);
+        }
+    };
+
+    private realtimeTicket: middleWare = async (req, res) => {
+        try {
+            const { authenticatedUser } = req as IRequest<any, any, any, SessionInjection>;
+            const result = await this.controller.realtimeTicket(authenticatedUser.id);
             res.json(result);
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);

@@ -1,3 +1,4 @@
+import http, { Server } from "node:http";
 import path from "node:path";
 import express, { Express, NextFunction, Request, Response } from "express";
 import cookieParser from "cookie-parser";
@@ -8,6 +9,7 @@ const STOREFRONT_ROOT = path.resolve(process.cwd(), "storefront");
 
 export class ServerExpressAdapter extends ServerPort {
     private app: Express;
+    private httpServer: Server;
 
     constructor() {
         super();
@@ -16,6 +18,15 @@ export class ServerExpressAdapter extends ServerPort {
         this.app.set("trust proxy", true);
         this.app.use(express.json({ limit: "100mb" }));
         this.app.use(cookieParser());
+        // Criado explicitamente (em vez de deixar app.listen() criar por
+        // baixo) pra existir ANTES de listen() ser chamado — WsOrderNotifierAdapter
+        // precisa do http.Server real pra anexar seu handler de upgrade
+        // durante a montagem do DI, que acontece bem antes do listen().
+        this.httpServer = http.createServer(this.app);
+    }
+
+    getHttpServer(): Server {
+        return this.httpServer;
     }
 
     async addRouter(methodHttp: methodHttp, path: string, ...callback: middleWare[]): Promise<void> {
@@ -57,7 +68,7 @@ export class ServerExpressAdapter extends ServerPort {
 
     listen(port: number): void {
         this.registerErrorHandler();
-        this.app.listen(port, ()=>console.log(`Servidor rodando em ${port}`));
+        this.httpServer.listen(port, ()=>console.log(`Servidor rodando em ${port}`));
     }
 
     private registerErrorHandler(): void {

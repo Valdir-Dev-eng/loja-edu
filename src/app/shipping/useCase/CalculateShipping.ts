@@ -2,24 +2,38 @@ import { CachePort } from "../../../domain/database/CachePort";
 import { Product } from "../../../domain/entites/Product";
 import { NotFoundError } from "../../../domain/errors/NotFoundError";
 import { Money } from "../../../domain/money/Money";
+import { RateLimitExceededError } from "../../../domain/rateLimit/RateLimitExceededError";
+import { RateLimiterPort } from "../../../domain/rateLimit/RateLimiterPort";
 import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
 import { ShippingGatewayPort, ShippingQuoteRequestItem } from "../../../domain/shipping/ShippingGatewayPort";
+import { SHIPPING_QUOTE_GATEWAY } from "../../../infra/rateLimit/RateLimitRouteRules";
 import { CalculateShippingInput } from "../dto/CalculateShippingInput";
 import { CalculateShippingOutput } from "../dto/CalculateShippingOutput";
 import { SHIPPING_QUOTE_CACHE_TTL_SECONDS, shippingQuoteCacheKey } from "../ShippingCacheKeys";
+
+const RATE_LIMIT_KEY_PREFIX = "shipping-quote-gateway";
 
 export class CalculateShipping {
     constructor(
         private productRepo: RepositoryPort<Product>,
         private shippingGateway: ShippingGatewayPort,
-        private cache: CachePort
+        private cache: CachePort,
+        private rateLimiter: RateLimiterPort
     ) {}
 
-    async execute(input: CalculateShippingInput): Promise<CalculateShippingOutput> {
+    // clientKey so importa em cache MISS (ver comentario no rate limit
+    // desativado pra essa rota em RateLimitRouteRules.ts) — pedir a mesma
+    // combinacao de CEP+carrinho de novo dentro do TTL nunca chega aqui.
+    async execute(input: CalculateShippingInput, clientKey: string): Promise<CalculateShippingOutput> {
         const cacheKey = shippingQuoteCacheKey(input);
         const cached = await this.cache.get(cacheKey);
         if (cached) {
             return JSON.parse(cached) as CalculateShippingOutput;
+        }
+
+        const decision = await this.rateLimiter.consume(`${RATE_LIMIT_KEY_PREFIX}:${clientKey}`, SHIPPING_QUOTE_GATEWAY);
+        if (!decision.allowed) {
+            throw new RateLimitExceededError(decision.retryAfterMs);
         }
 
         const items = await this.buildQuoteItems(input.items);

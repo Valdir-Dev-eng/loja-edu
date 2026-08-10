@@ -4,7 +4,8 @@ import { Product } from "../../../domain/entites/Product";
 import { BusinessRuleError } from "../../../domain/errors/BusinessRuleError";
 import { ConflictError } from "../../../domain/errors/ConflictError";
 import { NotFoundError } from "../../../domain/errors/NotFoundError";
-import { PaymentGatewayPort, PaymentStatus } from "../../../domain/payment/PaymentGatewayPort";
+import { PaymentGatewayPort, PaymentStatus, PaymentStatusResult } from "../../../domain/payment/PaymentGatewayPort";
+import { WebSocketNotifierPort } from "../../../domain/realtime/WebSocketNotifierPort";
 import { RepositoryPort } from "../../../domain/repository/RepositoryPort";
 import { ProcessPaymentWebhookInput } from "../dto/ProcessPaymentWebhookInput";
 
@@ -22,10 +23,11 @@ export class ProcessPaymentWebhook {
         private orderRepo: RepositoryPort<Order>,
         private productRepo: RepositoryPort<Product>,
         private paymentGateway: PaymentGatewayPort,
-        private dataAccess: DataAccessPort
+        private dataAccess: DataAccessPort,
+        private wsNotifier: WebSocketNotifierPort
     ) {}
 
-    async execute(input: ProcessPaymentWebhookInput): Promise<void> {
+    async execute(input: ProcessPaymentWebhookInput): Promise<PaymentStatusResult> {
         const result = await this.paymentGateway.getPaymentStatus(input.externalPaymentId);
         const order = await this.orderRepo.findById(result.orderId);
         if (!order) {
@@ -35,22 +37,33 @@ export class ProcessPaymentWebhook {
         switch (result.status) {
             case PaymentStatus.APPROVED:
                 await this.handleApproved(order, result.paidAmountCents);
-                return;
+                break;
             case PaymentStatus.REJECTED:
                 await this.handleReleaseStock(order, OrderStatus.REJECTED);
-                return;
+                break;
             case PaymentStatus.CANCELLED:
                 await this.handleReleaseStock(order, OrderStatus.CANCELLED);
-                return;
+                break;
             case PaymentStatus.REFUNDED:
                 await this.handleTerminalFromPaid(order, OrderStatus.REFUNDED);
-                return;
+                break;
             case PaymentStatus.CHARGED_BACK:
                 await this.handleTerminalFromPaid(order, OrderStatus.CHARGEBACK);
-                return;
+                break;
             case PaymentStatus.PENDING:
-                return;
+                break;
         }
+        return result;
+    }
+
+    // Chamado quando o gateway responde "pagamento nao encontrado" pra um
+    // pedido ainda PENDING_PAYMENT (ver PaymentNotFoundError) — o PIX sumiu
+    // do lado do Mercado Pago (sandbox purgado, ou expiracao real), entao
+    // nunca vai chegar webhook nem reconciliacao futura vai resolver. Sem
+    // isso o pedido ficava preso pra sempre em "aguardando pagamento" com um
+    // botao de "concluir pagamento" que nunca funciona.
+    async expireAbandonedPayment(order: Order): Promise<void> {
+        await this.handleReleaseStock(order, OrderStatus.EXPIRED);
     }
 
     // CAS pelo estado de ORIGEM (WHERE status = PENDING_PAYMENT), nao pelo
@@ -70,6 +83,7 @@ export class ProcessPaymentWebhook {
             });
         });
         if (won) {
+            this.wsNotifier.notifyOrderPaymentUpdated(order.userId, order.id, OrderStatus.PAID);
             return;
         }
         await this.assertBenignNoOp(order.id, OrderStatus.PAID, "confirmar pagamento de");
@@ -91,9 +105,10 @@ export class ProcessPaymentWebhook {
             return true;
         });
         if (won) {
+            this.wsNotifier.notifyOrderPaymentUpdated(order.userId, order.id, target);
             return;
         }
-        const action = target === OrderStatus.REJECTED ? "recusar" : "cancelar";
+        const action = target === OrderStatus.REJECTED ? "recusar" : target === OrderStatus.EXPIRED ? "expirar" : "cancelar";
         await this.assertBenignNoOp(order.id, target, action);
     }
 
@@ -103,6 +118,7 @@ export class ProcessPaymentWebhook {
             return txOrderRepo.updateIfEqual(order.id, "status", OrderStatus.PAID, { status: target });
         });
         if (won) {
+            this.wsNotifier.notifyOrderPaymentUpdated(order.userId, order.id, target);
             return;
         }
         const action = target === OrderStatus.REFUNDED ? "estornar" : "contestar (chargeback)";

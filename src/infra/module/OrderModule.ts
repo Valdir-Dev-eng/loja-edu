@@ -1,6 +1,7 @@
 import { CheckoutOrder } from "../../app/orders/useCase/CheckoutOrder";
 import { GetMyOrders } from "../../app/orders/useCase/GetMyOrders";
 import { GetOrderPaymentStatus } from "../../app/orders/useCase/GetOrderPaymentStatus";
+import { IssueRealtimeTicket } from "../../app/orders/useCase/IssueRealtimeTicket";
 import { ListOrdersForAdmin } from "../../app/orders/useCase/ListOrdersForAdmin";
 import { ProcessPaymentWebhook } from "../../app/orders/useCase/ProcessPaymentWebhook";
 import { ClearCart } from "../../app/cart/useCase/ClearCart";
@@ -12,6 +13,7 @@ import { Order } from "../../domain/entites/Order";
 import { Product } from "../../domain/entites/Product";
 import { User } from "../../domain/entites/User";
 import { PaymentGatewayPort } from "../../domain/payment/PaymentGatewayPort";
+import { WebSocketNotifierPort } from "../../domain/realtime/WebSocketNotifierPort";
 import { ShippingGatewayPort } from "../../domain/shipping/ShippingGatewayPort";
 import { RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { OrderController } from "../controller/OrderController";
@@ -37,6 +39,7 @@ export class OrderModule {
         const server = this.di.getDependency<ServerPort>(ServerPort);
         const paymentGateway = this.di.getDependency<PaymentGatewayPort>(PaymentGatewayPort);
         const shippingGateway = this.di.getDependency<ShippingGatewayPort>(ShippingGatewayPort);
+        const wsNotifier = this.di.getDependency<WebSocketNotifierPort>(WebSocketNotifierPort);
 
         const orderRepository: RepositoryPort<Order> = new OrderRepository(db);
         const productRepository: RepositoryPort<Product> = new ProductRepository(db);
@@ -45,7 +48,7 @@ export class OrderModule {
         const cartRepository: RepositoryPort<Cart> = new CartRepository(db);
         const cartItemRepository: RepositoryPort<CartItem> = new CartItemRepository(db);
 
-        const processPaymentWebhook = new ProcessPaymentWebhook(orderRepository, productRepository, paymentGateway, db);
+        const processPaymentWebhook = new ProcessPaymentWebhook(orderRepository, productRepository, paymentGateway, db, wsNotifier);
 
         this.controller = new OrderController(
             new CheckoutOrder(
@@ -61,7 +64,8 @@ export class OrderModule {
             processPaymentWebhook,
             new GetMyOrders(orderRepository),
             new GetOrderPaymentStatus(orderRepository, processPaymentWebhook),
-            new ListOrdersForAdmin(orderRepository, userRepository)
+            new ListOrdersForAdmin(orderRepository, userRepository),
+            new IssueRealtimeTicket(wsNotifier)
         );
 
         new OrderRouter(server, this.controller, new OrderValidator(), authRouter);

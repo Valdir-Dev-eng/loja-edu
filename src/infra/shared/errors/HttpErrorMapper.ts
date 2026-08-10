@@ -5,6 +5,7 @@ import { IntegrationNotConnectedError } from "../../../domain/errors/Integration
 import { NotFoundError } from "../../../domain/errors/NotFoundError";
 import { OnboardingPendingError } from "../../../domain/errors/OnboardingPendingError";
 import { UnauthorizedError } from "../../../domain/errors/UnauthorizedError";
+import { RateLimitExceededError } from "../../../domain/rateLimit/RateLimitExceededError";
 import { ValidationError } from "./ValidationError";
 
 export interface HttpErrorBody {
@@ -42,6 +43,9 @@ export class HttpErrorMapper {
         }
         if (error instanceof IntegrationNotConnectedError) {
             return { status: 503, body: { error: error.message } };
+        }
+        if (error instanceof RateLimitExceededError) {
+            return { status: 429, body: { error: error.message } };
         }
         console.error("Erro não mapeado na taxonomia de negócio, respondendo 500:", error);
         return { status: 500, body: { error: "Erro interno do servidor" } };

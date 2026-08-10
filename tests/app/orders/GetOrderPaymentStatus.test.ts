@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { GetOrderPaymentStatus } from "../../../src/app/orders/useCase/GetOrderPaymentStatus";
 import { ProcessPaymentWebhook } from "../../../src/app/orders/useCase/ProcessPaymentWebhook";
 import { Order, OrderStatus } from "../../../src/domain/entites/Order";
+import { Product } from "../../../src/domain/entites/Product";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
 import { PaymentStatus } from "../../../src/domain/payment/PaymentGatewayPort";
 import { OrderRepository } from "../../../src/infra/repository/OrderRepository";
 import { ProductRepository } from "../../../src/infra/repository/ProductRepository";
 import { TestWithMemoryDataAcess } from "../../doubles/TestWithMemoryDataAcess";
 import { FakePaymentGatewayPort } from "../../doubles/FakePaymentGatewayPort";
+import { FakeWebSocketNotifierPort } from "../../doubles/FakeWebSocketNotifierPort";
 
 let sequence = 0;
 const createId = () => `generated-id-${++sequence}`;
@@ -20,9 +22,10 @@ const buildUseCase = () => {
     const orderRepo = new OrderRepository(db);
     const productRepo = new ProductRepository(db);
     const paymentGateway = new FakePaymentGatewayPort();
-    const processPaymentWebhook = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db);
+    const wsNotifier = new FakeWebSocketNotifierPort();
+    const processPaymentWebhook = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db, wsNotifier);
     const useCase = new GetOrderPaymentStatus(orderRepo, processPaymentWebhook);
-    return { useCase, orderRepo, productRepo, paymentGateway };
+    return { useCase, orderRepo, productRepo, paymentGateway, wsNotifier };
 };
 
 describe("GetOrderPaymentStatus", () => {
@@ -92,6 +95,74 @@ describe("GetOrderPaymentStatus", () => {
 
         expect(output.status).toBe(OrderStatus.PAID);
         expect(context.paymentGateway.consultedPaymentIds).toEqual(["mp-payment-1"]);
+    });
+
+    it("devolve o QR code do PIX quando o pedido continua pendente após reconsultar o gateway", async () => {
+        const order = Order.build(
+            createId,
+            "user-1",
+            "address-1",
+            [{ productId: "product-1", productName: "Dipirona", priceCents: 1990, quantity: 1 }],
+            500
+        );
+        order.attachPayment("mp-payment-1");
+        await context.orderRepo.save(order);
+        context.paymentGateway.setNextStatusResult({
+            externalPaymentId: "mp-payment-1",
+            orderId: order.id,
+            status: PaymentStatus.PENDING,
+            paidAmountCents: 0,
+            qrCode: "00020126-copia-e-cola",
+            qrCodeBase64: "cXItYmFzZTY0",
+            expiresAt: new Date("2026-01-01T00:00:00.000Z"),
+        });
+
+        const output = await context.useCase.execute({ orderId: order.id, userId: "user-1" });
+
+        expect(output.status).toBe(OrderStatus.PENDING_PAYMENT);
+        expect(output.qrCode).toBe("00020126-copia-e-cola");
+        expect(output.qrCodeBase64).toBe("cXItYmFzZTY0");
+        expect(output.expiresAt).toEqual(new Date("2026-01-01T00:00:00.000Z"));
+    });
+
+    it("expira o pedido e libera o estoque quando o gateway nao encontra mais o pagamento", async () => {
+        const product = Product.build(createId, "Dipirona", 1990, null, 5, 0.1, 5, 5, 10, null);
+        await context.productRepo.save(product);
+        const order = Order.build(
+            createId,
+            "user-1",
+            "address-1",
+            [{ productId: product.id, productName: product.name, priceCents: 1990, quantity: 2 }],
+            500
+        );
+        order.attachPayment("mp-payment-1");
+        await context.orderRepo.save(order);
+        context.paymentGateway.reportNextStatusCheckAsNotFound();
+
+        const output = await context.useCase.execute({ orderId: order.id, userId: "user-1" });
+
+        expect(output.status).toBe(OrderStatus.EXPIRED);
+        expect(output.qrCode).toBeUndefined();
+        const persistedProduct = await context.productRepo.findById(product.id);
+        expect(persistedProduct?.stock).toBe(5 + 2);
+    });
+
+    it("não devolve QR code quando a reconsulta ao gateway falha", async () => {
+        const order = Order.build(
+            createId,
+            "user-1",
+            "address-1",
+            [{ productId: "product-1", productName: "Dipirona", priceCents: 1990, quantity: 1 }],
+            500
+        );
+        order.attachPayment("mp-payment-1");
+        await context.orderRepo.save(order);
+        context.paymentGateway.failNextStatusCheck();
+
+        const output = await context.useCase.execute({ orderId: order.id, userId: "user-1" });
+
+        expect(output.status).toBe(OrderStatus.PENDING_PAYMENT);
+        expect(output.qrCode).toBeUndefined();
     });
 
     it("não reconsulta o gateway quando o pedido já não está mais pendente", async () => {

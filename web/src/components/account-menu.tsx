@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOut, MapPin, Package, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ function Avatar({ user, isAdmin }: { user: UserOutput; isAdmin: boolean }) {
 
 export function AccountMenu({ user }: { user: UserOutput }) {
   const { clear } = useSession();
+  const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const isAdmin = user.isAdmin;
 
@@ -52,6 +54,7 @@ export function AccountMenu({ user }: { user: UserOutput }) {
     } finally {
       clear();
       setLoggingOut(false);
+      router.push("/");
     }
   }
 
@@ -75,17 +78,17 @@ export function AccountMenu({ user }: { user: UserOutput }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/perfil">
+          <Link href="/perfil" prefetch={false}>
             <UserRound /> Meu perfil
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/pedidos">
+          <Link href="/pedidos" prefetch={false}>
             <Package /> Meus pedidos
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/enderecos">
+          <Link href="/enderecos" prefetch={false}>
             <MapPin /> Meus endereços
           </Link>
         </DropdownMenuItem>

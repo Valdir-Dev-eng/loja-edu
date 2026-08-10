@@ -112,6 +112,9 @@ export interface CheckoutOrderOutput {
 export interface PaymentStatusOutput {
   orderId: string;
   status: OrderStatus;
+  qrCode?: string;
+  qrCodeBase64?: string;
+  expiresAt?: string;
 }
 
 export interface CartItemOutput {

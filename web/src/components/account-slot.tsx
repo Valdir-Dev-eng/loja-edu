@@ -71,7 +71,7 @@ export function MobileAccountLinks() {
           </Badge>
         )}
       </div>
-      <Link href="/perfil" className="flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground active:bg-secondary">
+      <Link href="/perfil" prefetch={false} className="flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground active:bg-secondary">
         <UserRound className="size-4" /> Meu perfil
       </Link>
       {role === "admin" && (

@@ -6,12 +6,14 @@ import {
     PaymentStatusResult,
     WebhookSignatureInput,
 } from "../../src/domain/payment/PaymentGatewayPort";
+import { PaymentNotFoundError } from "../../src/domain/payment/PaymentNotFoundError";
 
 export class FakePaymentGatewayPort extends PaymentGatewayPort {
     public createdPayments: CreatePixPaymentInput[] = [];
     public consultedPaymentIds: string[] = [];
     private shouldFailCreate = false;
     private shouldFailStatusCheck = false;
+    private shouldReportPaymentNotFound = false;
     private nextSignatureValid = true;
     private nextStatusResult: PaymentStatusResult | null = null;
     private sequence = 0;
@@ -22,6 +24,10 @@ export class FakePaymentGatewayPort extends PaymentGatewayPort {
 
     failNextStatusCheck(): void {
         this.shouldFailStatusCheck = true;
+    }
+
+    reportNextStatusCheckAsNotFound(): void {
+        this.shouldReportPaymentNotFound = true;
     }
 
     setNextSignatureValid(valid: boolean): void {
@@ -48,6 +54,9 @@ export class FakePaymentGatewayPort extends PaymentGatewayPort {
 
     async getPaymentStatus(externalPaymentId: string): Promise<PaymentStatusResult> {
         this.consultedPaymentIds.push(externalPaymentId);
+        if (this.shouldReportPaymentNotFound) {
+            throw new PaymentNotFoundError();
+        }
         if (this.shouldFailStatusCheck) {
             throw new Error("Falha simulada ao consultar pagamento.");
         }

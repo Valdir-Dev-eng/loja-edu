@@ -5,6 +5,7 @@ import "@mantine/core/styles.css";
 import { AppShell, Avatar, Burger, Group, NavLink, Stack, Text, createTheme, MantineProvider } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, LogOut, MapPin, Package, UserRound } from "lucide-react";
 import { ReactNode, useState } from "react";
@@ -56,7 +57,7 @@ export function AccountShell({ user, children }: { user: UserOutput; children: R
   }
 
   return (
-    <MantineProvider theme={theme} defaultColorScheme="light">
+    <MantineProvider theme={theme} forceColorScheme="light">
       <AppShell
         header={{ height: 60 }}
         navbar={{ width: 260, breakpoint: "sm", collapsed: { mobile: !opened } }}
@@ -66,9 +67,16 @@ export function AccountShell({ user, children }: { user: UserOutput; children: R
           <Group h="100%" px="md" justify="space-between">
             <Group gap="sm">
               <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-              <Text fw={800} c="brand.6" size="lg" component={Link} href="/" style={{ textDecoration: "none" }}>
-                Sorofarma
-              </Text>
+              <Link
+                href="/"
+                aria-label="Sorofarma — página inicial"
+                style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}
+              >
+                <Image src="/sorofarma.png" alt="" width={40} height={36} priority className="h-9 w-auto" />
+                <Text fw={800} c="brand.6" size="lg">
+                  Sorofarma
+                </Text>
+              </Link>
               <Text c="dimmed" size="sm" visibleFrom="sm">
                 Minha conta
               </Text>
@@ -100,6 +108,7 @@ export function AccountShell({ user, children }: { user: UserOutput; children: R
                   key={item.href}
                   component={Link}
                   href={item.href}
+                  prefetch={false}
                   label={item.label}
                   leftSection={<item.icon size={18} />}
                   active={pathname === item.href}

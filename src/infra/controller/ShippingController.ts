@@ -4,7 +4,7 @@ import { CalculateShipping } from "../../app/shipping/useCase/CalculateShipping"
 export class ShippingController {
     constructor(private calculateShipping: CalculateShipping) {}
 
-    async quote(input: CalculateShippingInput) {
-        return await this.calculateShipping.execute(input);
+    async quote(input: CalculateShippingInput, clientKey: string) {
+        return await this.calculateShipping.execute(input, clientKey);
     }
 }

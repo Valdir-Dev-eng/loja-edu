@@ -29,6 +29,9 @@ export interface PaymentStatusResult {
     orderId: string;
     status: PaymentStatus;
     paidAmountCents: number;
+    qrCode?: string;
+    qrCodeBase64?: string;
+    expiresAt?: Date;
 }
 
 export interface WebhookSignatureInput {

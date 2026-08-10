@@ -40,12 +40,14 @@
     "tsx": "^4.23.0",
     "typescript": "^7.0.2",
     "uuid": "^14.0.1",
+    "ws": "^8.21.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/multer": "^2.2.0",
     "@types/nodemailer": "^8.0.1",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.5",
     "tsc-alias": "^1.9.0",
     "tsup": "^8.5.1",

@@ -1,3 +1,5 @@
+import type { Server } from "node:http";
+
 export type methodHttp = "get" | "post" | "put" | "delete";
 
 export type IRequest<TBody = any, TParams = any, TQuery = any, TInjected = {}> = {
@@ -38,6 +40,7 @@ export type middleWare = (req: IRequest, res: IResponse, next: () => void) => Pr
 
 export abstract class ServerPort {
     abstract listen(port: number): void;
+    abstract getHttpServer(): Server;
     abstract addRouter(methodHttp: methodHttp, path: string, ...callback: middleWare[]): Promise<void>;
     abstract serveStatic(routePrefix: string, folderPath: string): void;
     abstract useGlobalMiddleware(middleware: middleWare): void;

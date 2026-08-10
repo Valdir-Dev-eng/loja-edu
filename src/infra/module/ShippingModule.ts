@@ -8,6 +8,7 @@ import { Address } from "../../domain/entites/Address";
 import { Order } from "../../domain/entites/Order";
 import { Product } from "../../domain/entites/Product";
 import { User } from "../../domain/entites/User";
+import { RateLimiterPort } from "../../domain/rateLimit/RateLimiterPort";
 import { RepositoryPort } from "../../domain/repository/RepositoryPort";
 import { ShippingGatewayPort } from "../../domain/shipping/ShippingGatewayPort";
 import { MelhorEnvioController } from "../controller/MelhorEnvioController";
@@ -31,6 +32,7 @@ export class ShippingModule {
         const server = this.di.getDependency<ServerPort>(ServerPort);
         const shippingGateway = this.di.getDependency<ShippingGatewayPort>(ShippingGatewayPort);
         const cache = this.di.getDependency<CachePort>(CachePort);
+        const rateLimiter = this.di.getDependency<RateLimiterPort>(RateLimiterPort);
 
         const productRepository: RepositoryPort<Product> = new ProductRepository(db);
         const addressRepository: RepositoryPort<Address> = new AddressRepository(db);
@@ -38,7 +40,7 @@ export class ShippingModule {
         const orderRepository: RepositoryPort<Order> = new OrderRepository(db);
 
         const shippingController = new ShippingController(
-            new CalculateShipping(productRepository, shippingGateway, cache)
+            new CalculateShipping(productRepository, shippingGateway, cache, rateLimiter)
         );
         new ShippingRouter(server, shippingController, new ShippingValidator());
 

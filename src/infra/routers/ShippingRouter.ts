@@ -29,7 +29,7 @@ export class ShippingRouter {
     private quote: middleWare = async (req, res) => {
         try {
             const input = (req as IRequest<any, any, any, ShippingQuoteInjection>).shippingQuoteInput;
-            const result = await this.controller.quote(input);
+            const result = await this.controller.quote(input, req.ip ?? "unknown-client");
             res.json(result);
         } catch (error) {
             const { status, body } = HttpErrorMapper.toHttp(error);

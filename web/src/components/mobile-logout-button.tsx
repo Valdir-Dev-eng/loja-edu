@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
@@ -7,6 +8,7 @@ import { useSession } from "@/hooks/use-session";
 
 export function MobileLogoutButton() {
   const { clear } = useSession();
+  const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function handleLogout() {
@@ -18,6 +20,7 @@ export function MobileLogoutButton() {
     } finally {
       clear();
       setLoggingOut(false);
+      router.push("/");
     }
   }
 

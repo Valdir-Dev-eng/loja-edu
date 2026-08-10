@@ -7,6 +7,7 @@ import { OrderRepository } from "../../src/infra/repository/OrderRepository";
 import { ProductRepository } from "../../src/infra/repository/ProductRepository";
 import { TestWithMemoryDataAcess } from "../doubles/TestWithMemoryDataAcess";
 import { FakePaymentGatewayPort } from "../doubles/FakePaymentGatewayPort";
+import { FakeWebSocketNotifierPort } from "../doubles/FakeWebSocketNotifierPort";
 
 let sequence = 0;
 const createId = () => `webhook-concurrency-${++sequence}`;
@@ -24,7 +25,8 @@ describe("ProcessPaymentWebhook — atomicidade sob concorrência real (webhook 
         const orderRepo = new OrderRepository(db);
         const productRepo = new ProductRepository(db);
         const paymentGateway = new FakePaymentGatewayPort();
-        const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db);
+        const wsNotifier = new FakeWebSocketNotifierPort();
+        const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db, wsNotifier);
 
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await productRepo.save(product);
@@ -66,7 +68,8 @@ describe("ProcessPaymentWebhook — atomicidade sob concorrência real (webhook 
         const orderRepo = new OrderRepository(db);
         const productRepo = new ProductRepository(db);
         const paymentGateway = new FakePaymentGatewayPort();
-        const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db);
+        const wsNotifier = new FakeWebSocketNotifierPort();
+        const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db, wsNotifier);
 
         const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.1, 5, 5, 10, null);
         await productRepo.save(product);

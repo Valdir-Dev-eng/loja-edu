@@ -37,16 +37,16 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("GET", "/cart", ["authenticated-read"]);
         });
 
-        it("POST /cart/items -> generic-write", () => {
-            expectTierIds("POST", "/cart/items", ["generic-write"]);
+        it("POST /cart/items -> cart-mutation", () => {
+            expectTierIds("POST", "/cart/items", ["cart-mutation"]);
         });
 
-        it("PUT /cart/items/:productId -> generic-write", () => {
-            expectTierIds("PUT", "/cart/items/produto-123", ["generic-write"]);
+        it("PUT /cart/items/:productId -> cart-mutation", () => {
+            expectTierIds("PUT", "/cart/items/produto-123", ["cart-mutation"]);
         });
 
-        it("DELETE /cart/items/:productId -> generic-write", () => {
-            expectTierIds("DELETE", "/cart/items/produto-123", ["generic-write"]);
+        it("DELETE /cart/items/:productId -> cart-mutation", () => {
+            expectTierIds("DELETE", "/cart/items/produto-123", ["cart-mutation"]);
         });
 
         it("GET /addresses/my -> authenticated-read", () => {
@@ -81,8 +81,8 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("GET", "/product/", []);
         });
 
-        it("POST /order/checkout -> paid-external-call (cobra no Mercado Pago)", () => {
-            expectTierIds("POST", "/order/checkout", ["paid-external-call"]);
+        it("POST /order/checkout -> checkout-attempt (cobra no Mercado Pago, mas nao pode punir o retry apos refresh de sessao)", () => {
+            expectTierIds("POST", "/order/checkout", ["checkout-attempt"]);
         });
 
         it("GET /order/my -> authenticated-read", () => {
@@ -91,6 +91,10 @@ describe("RateLimitRouteRules", () => {
 
         it("GET /order/:id/payment-status -> authenticated-read (polling esperado do app)", () => {
             expectTierIds("GET", "/order/pedido-123/payment-status", ["authenticated-read"]);
+        });
+
+        it("GET /order/realtime-ticket -> authenticated-read (emite ticket avulso pra abrir o WebSocket)", () => {
+            expectTierIds("GET", "/order/realtime-ticket", ["authenticated-read"]);
         });
 
         it("POST /webhooks/mercadopago -> isenta explicitamente (assinatura HMAC já protege)", () => {
@@ -129,8 +133,8 @@ describe("RateLimitRouteRules", () => {
             expectTierIds("GET", "/product/produto-123/images", []);
         });
 
-        it("POST /shipping/quote -> paid-external-call (chama o Melhor Envio)", () => {
-            expectTierIds("POST", "/shipping/quote", ["paid-external-call"]);
+        it("POST /shipping/quote -> isenta neste middleware (paid-external-call e' consumida dentro do use case, so em cache MISS)", () => {
+            expectTierIds("POST", "/shipping/quote", []);
         });
 
         it("GET /admin/melhor-envio/connect -> oauth", () => {

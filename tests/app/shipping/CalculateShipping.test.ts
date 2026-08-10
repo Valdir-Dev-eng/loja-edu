@@ -3,19 +3,23 @@ import { CalculateShipping } from "../../../src/app/shipping/useCase/CalculateSh
 import { SHIPPING_QUOTE_CACHE_TTL_SECONDS } from "../../../src/app/shipping/ShippingCacheKeys";
 import { Product } from "../../../src/domain/entites/Product";
 import { NotFoundError } from "../../../src/domain/errors/NotFoundError";
+import { RateLimitExceededError } from "../../../src/domain/rateLimit/RateLimitExceededError";
 import { InMemoryRepository } from "../../doubles/InMemoryRepository";
 import { FakeShippingGatewayPort } from "../../doubles/FakeShippingGatewayPort";
 import { FakeCachePort } from "../../doubles/FakeCachePort";
+import { FakeRateLimiterPort } from "../../doubles/FakeRateLimiterPort";
 
 let sequence = 0;
 const createId = () => `product-id-${++sequence}`;
+const CLIENT_KEY = "client-1";
 
 const buildUseCase = () => {
     const productRepo = new InMemoryRepository<Product>();
     const shippingGateway = new FakeShippingGatewayPort();
     const cache = new FakeCachePort();
-    const useCase = new CalculateShipping(productRepo, shippingGateway, cache);
-    return { useCase, productRepo, shippingGateway, cache };
+    const rateLimiter = new FakeRateLimiterPort();
+    const useCase = new CalculateShipping(productRepo, shippingGateway, cache, rateLimiter);
+    return { useCase, productRepo, shippingGateway, cache, rateLimiter };
 };
 
 describe("CalculateShipping", () => {
@@ -33,10 +37,10 @@ describe("CalculateShipping", () => {
             { serviceId: 2, carrierName: "SEDEX", priceCents: 3000, deliveryTimeDays: 2 },
         ]);
 
-        const output = await context.useCase.execute({
-            destinationPostalCode: "01310100",
-            items: [{ productId: product.id, quantity: 2 }],
-        });
+        const output = await context.useCase.execute(
+            { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 2 }] },
+            CLIENT_KEY
+        );
 
         expect(output).toEqual([
             { serviceId: 1, carrierName: "PAC", priceCents: 1500, priceDisplay: "R$ 15,00", deliveryTimeDays: 7 },
@@ -50,7 +54,10 @@ describe("CalculateShipping", () => {
 
     it("recusa cotar frete de produto inexistente", async () => {
         await expect(
-            context.useCase.execute({ destinationPostalCode: "01310100", items: [{ productId: "id-inexistente", quantity: 1 }] })
+            context.useCase.execute(
+                { destinationPostalCode: "01310100", items: [{ productId: "id-inexistente", quantity: 1 }] },
+                CLIENT_KEY
+            )
         ).rejects.toThrow(NotFoundError);
     });
 
@@ -59,10 +66,10 @@ describe("CalculateShipping", () => {
         await context.productRepo.save(product);
         context.shippingGateway.queueQuoteOptions([]);
 
-        const output = await context.useCase.execute({
-            destinationPostalCode: "01310100",
-            items: [{ productId: product.id, quantity: 1 }],
-        });
+        const output = await context.useCase.execute(
+            { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] },
+            CLIENT_KEY
+        );
 
         expect(output).toEqual([]);
     });
@@ -75,8 +82,8 @@ describe("CalculateShipping", () => {
         ]);
 
         const quoteInput = { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 2 }] };
-        const first = await context.useCase.execute(quoteInput);
-        const second = await context.useCase.execute(quoteInput);
+        const first = await context.useCase.execute(quoteInput, CLIENT_KEY);
+        const second = await context.useCase.execute(quoteInput, CLIENT_KEY);
 
         expect(second).toEqual(first);
         expect(context.shippingGateway.quoteCallCount).toBe(1);
@@ -89,7 +96,10 @@ describe("CalculateShipping", () => {
             { serviceId: 1, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
         ]);
 
-        await context.useCase.execute({ destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] });
+        await context.useCase.execute(
+            { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] },
+            CLIENT_KEY
+        );
 
         const cacheKey = `shipping-quote:01310100:${product.id}:1`;
         expect(context.cache.has(cacheKey)).toBe(true);
@@ -103,8 +113,14 @@ describe("CalculateShipping", () => {
             { serviceId: 1, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
         ]);
 
-        await context.useCase.execute({ destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] });
-        await context.useCase.execute({ destinationPostalCode: "20000000", items: [{ productId: product.id, quantity: 1 }] });
+        await context.useCase.execute(
+            { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] },
+            CLIENT_KEY
+        );
+        await context.useCase.execute(
+            { destinationPostalCode: "20000000", items: [{ productId: product.id, quantity: 1 }] },
+            CLIENT_KEY
+        );
 
         expect(context.shippingGateway.quoteCallCount).toBe(2);
     });
@@ -116,8 +132,14 @@ describe("CalculateShipping", () => {
             { serviceId: 1, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
         ]);
 
-        await context.useCase.execute({ destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] });
-        await context.useCase.execute({ destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 2 }] });
+        await context.useCase.execute(
+            { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] },
+            CLIENT_KEY
+        );
+        await context.useCase.execute(
+            { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 2 }] },
+            CLIENT_KEY
+        );
 
         expect(context.shippingGateway.quoteCallCount).toBe(2);
     });
@@ -131,30 +153,67 @@ describe("CalculateShipping", () => {
             { serviceId: 1, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
         ]);
 
-        await context.useCase.execute({
-            destinationPostalCode: "01310100",
-            items: [
-                { productId: productA.id, quantity: 1 },
-                { productId: productB.id, quantity: 1 },
-            ],
-        });
-        await context.useCase.execute({
-            destinationPostalCode: "01310100",
-            items: [
-                { productId: productB.id, quantity: 1 },
-                { productId: productA.id, quantity: 1 },
-            ],
-        });
+        await context.useCase.execute(
+            {
+                destinationPostalCode: "01310100",
+                items: [
+                    { productId: productA.id, quantity: 1 },
+                    { productId: productB.id, quantity: 1 },
+                ],
+            },
+            CLIENT_KEY
+        );
+        await context.useCase.execute(
+            {
+                destinationPostalCode: "01310100",
+                items: [
+                    { productId: productB.id, quantity: 1 },
+                    { productId: productA.id, quantity: 1 },
+                ],
+            },
+            CLIENT_KEY
+        );
 
         expect(context.shippingGateway.quoteCallCount).toBe(1);
     });
 
     it("não coloca em cache uma cotação que falhou por produto inexistente", async () => {
         await expect(
-            context.useCase.execute({ destinationPostalCode: "01310100", items: [{ productId: "id-inexistente", quantity: 1 }] })
+            context.useCase.execute(
+                { destinationPostalCode: "01310100", items: [{ productId: "id-inexistente", quantity: 1 }] },
+                CLIENT_KEY
+            )
         ).rejects.toThrow(NotFoundError);
 
         const cacheKey = "shipping-quote:01310100:id-inexistente:1";
         expect(context.cache.has(cacheKey)).toBe(false);
+    });
+
+    it("não consome o rate limiter em cache HIT — o ponto inteiro do cache e' evitar o gateway pago", async () => {
+        const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.2, 5, 5, 10, null);
+        await context.productRepo.save(product);
+        context.shippingGateway.queueQuoteOptions([
+            { serviceId: 1, carrierName: "PAC", priceCents: 1500, deliveryTimeDays: 7 },
+        ]);
+        const quoteInput = { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] };
+
+        await context.useCase.execute(quoteInput, CLIENT_KEY);
+        await context.useCase.execute(quoteInput, CLIENT_KEY);
+
+        expect(context.rateLimiter.consumeCalls).toHaveLength(1);
+    });
+
+    it("recusa com RateLimitExceededError quando o limitador bloqueia um cache MISS", async () => {
+        const product = Product.build(createId, "Dipirona", 1990, null, 10, 0.2, 5, 5, 10, null);
+        await context.productRepo.save(product);
+        context.rateLimiter.queueDecision({ allowed: false, retryAfterMs: 4000 });
+
+        await expect(
+            context.useCase.execute(
+                { destinationPostalCode: "01310100", items: [{ productId: product.id, quantity: 1 }] },
+                CLIENT_KEY
+            )
+        ).rejects.toThrow(RateLimitExceededError);
+        expect(context.shippingGateway.quoteCallCount).toBe(0);
     });
 });

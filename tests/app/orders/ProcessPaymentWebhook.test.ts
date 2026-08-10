@@ -9,6 +9,7 @@ import { OrderRepository } from "../../../src/infra/repository/OrderRepository";
 import { ProductRepository } from "../../../src/infra/repository/ProductRepository";
 import { TestWithMemoryDataAcess } from "../../doubles/TestWithMemoryDataAcess";
 import { FakePaymentGatewayPort } from "../../doubles/FakePaymentGatewayPort";
+import { FakeWebSocketNotifierPort } from "../../doubles/FakeWebSocketNotifierPort";
 
 let sequence = 0;
 const createId = () => `generated-id-${++sequence}`;
@@ -23,8 +24,9 @@ const buildUseCase = () => {
     const orderRepo = new OrderRepository(db);
     const productRepo = new ProductRepository(db);
     const paymentGateway = new FakePaymentGatewayPort();
-    const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db);
-    return { useCase, orderRepo, productRepo, paymentGateway, db };
+    const wsNotifier = new FakeWebSocketNotifierPort();
+    const useCase = new ProcessPaymentWebhook(orderRepo, productRepo, paymentGateway, db, wsNotifier);
+    return { useCase, orderRepo, productRepo, paymentGateway, wsNotifier, db };
 };
 
 const buildPendingOrder = async (context: ReturnType<typeof buildUseCase>, quantity = 2) => {
@@ -62,6 +64,9 @@ describe("ProcessPaymentWebhook", () => {
 
         const persisted = await context.orderRepo.findById(order.id);
         expect(persisted?.status).toBe(OrderStatus.PAID);
+        expect(context.wsNotifier.notifiedUpdates).toEqual([
+            { userId: order.userId, orderId: order.id, status: OrderStatus.PAID },
+        ]);
     });
 
     it("sempre reconsulta o Mercado Pago em vez de confiar no corpo do webhook", async () => {
@@ -104,10 +109,13 @@ describe("ProcessPaymentWebhook", () => {
         });
 
         await context.useCase.execute({ externalPaymentId: "mp-payment-1" });
-        await expect(context.useCase.execute({ externalPaymentId: "mp-payment-1" })).resolves.toBeUndefined();
+        await expect(context.useCase.execute({ externalPaymentId: "mp-payment-1" })).resolves.toMatchObject({
+            status: PaymentStatus.APPROVED,
+        });
 
         const persisted = await context.orderRepo.findById(order.id);
         expect(persisted?.status).toBe(OrderStatus.PAID);
+        expect(context.wsNotifier.notifiedUpdates).toHaveLength(1);
     });
 
     it("devolve o estoque quando o pagamento é recusado", async () => {
@@ -125,6 +133,9 @@ describe("ProcessPaymentWebhook", () => {
         const persistedProduct = await context.productRepo.findById(product.id);
         expect(persistedOrder?.status).toBe(OrderStatus.REJECTED);
         expect(persistedProduct?.stock).toBe(10 + 3);
+        expect(context.wsNotifier.notifiedUpdates).toEqual([
+            { userId: order.userId, orderId: order.id, status: OrderStatus.REJECTED },
+        ]);
     });
 
     it("desfaz a transação inteira se um efeito colateral falhar no meio: pedido volta pro estado original, sem torn write", async () => {
@@ -196,6 +207,9 @@ describe("ProcessPaymentWebhook", () => {
 
         const persisted = await context.orderRepo.findById(order.id);
         expect(persisted?.status).toBe(OrderStatus.REFUNDED);
+        expect(context.wsNotifier.notifiedUpdates).toEqual([
+            { userId: order.userId, orderId: order.id, status: OrderStatus.REFUNDED },
+        ]);
     });
 
     it("recusa estornar um pedido que ainda não foi pago", async () => {
@@ -254,5 +268,6 @@ describe("ProcessPaymentWebhook", () => {
 
         const persisted = await context.orderRepo.findById(order.id);
         expect(persisted?.status).toBe(OrderStatus.PENDING_PAYMENT);
+        expect(context.wsNotifier.notifiedUpdates).toHaveLength(0);
     });
 });
